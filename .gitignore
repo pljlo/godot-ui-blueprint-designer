@@ -1,0 +1,6 @@
+.DS_Store
+*.tmp
+*.bak
+*.swp
+*.UI_project.json
+*_UI_project.json

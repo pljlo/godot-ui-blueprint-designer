@@ -1,0 +1,1852 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Godot UI Blueprint Designer · Adaptive Layout</title>
+<style>
+  :root{
+    --bg:#14171b; --panel:#1b2026; --panel2:#20262d; --panel3:#252c34; --line:#333b45;
+    --text:#e8edf2; --muted:#9da7b2; --accent:#62f28a; --accent2:#6fb6ff; --node:#8c73ff;
+    --danger:#ff6b7a; --warning:#ffc56b; --shadow:0 14px 40px rgba(0,0,0,.32);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+  button,input,select,textarea{font:inherit}
+  button{color:inherit}
+  .app{height:100%;display:grid;grid-template-rows:48px 44px 1fr}
+  .topbar{display:flex;align-items:center;gap:10px;padding:0 12px;background:#171b20;border-bottom:1px solid var(--line);box-shadow:0 1px 0 rgba(255,255,255,.02);z-index:20}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:750;letter-spacing:.2px;white-space:nowrap}
+  .brand-mark{width:22px;height:22px;border:2px solid var(--accent);border-radius:7px;position:relative;box-shadow:inset 0 0 0 4px rgba(98,242,138,.08)}
+  .brand-mark:after{content:"";position:absolute;width:6px;height:6px;border-radius:50%;background:var(--accent);left:6px;top:6px}
+  .spacer{flex:1}
+  .topbtn,.toolbtn,.smallbtn{border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:7px 10px;cursor:pointer;transition:.15s;white-space:nowrap}
+  .topbtn:hover,.toolbtn:hover,.smallbtn:hover{border-color:#53606e;background:#29313a}
+  .topbtn.primary{background:var(--accent);border-color:var(--accent);color:#102116;font-weight:800}
+  .topbtn.primary:hover{filter:brightness(1.05)}
+  .history-btn:disabled{opacity:.34;cursor:not-allowed;filter:saturate(.45);background:#1b2026;border-color:#2b323a}
+  .history-btn:disabled:hover{background:#1b2026;border-color:#2b323a}
+  .project-title{width:180px;border:1px solid transparent;background:transparent;color:var(--text);font-weight:700;padding:6px 8px;border-radius:7px}
+  .project-title:focus{outline:none;border-color:#4f5d6c;background:var(--panel2)}
+
+  .tabsbar{display:flex;align-items:end;gap:4px;padding:6px 10px 0;background:#181d22;border-bottom:1px solid var(--line);overflow:hidden}
+  .tabs{display:flex;gap:4px;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;flex:1}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{height:36px;display:flex;align-items:center;gap:8px;padding:0 11px;border:1px solid transparent;border-bottom:none;border-radius:9px 9px 0 0;background:#20262d;color:#aeb7c1;cursor:pointer;min-width:120px;max-width:220px;user-select:none}
+  .tab.active{background:#252c34;color:#fff;border-color:#39424d;box-shadow:inset 0 2px 0 var(--accent2)}
+  .tab-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+  .tab-close{opacity:.45;border:0;background:transparent;cursor:pointer;color:inherit;padding:2px 3px;border-radius:4px}
+  .tab-close:hover{opacity:1;background:#ffffff10}
+  .tab-add{height:30px;width:34px;border:1px solid var(--line);background:#222931;border-radius:7px;cursor:pointer;margin-bottom:3px;color:var(--muted);font-size:18px}
+
+  .workspace{min-height:0;display:grid;grid-template-columns:280px 1fr 310px}
+  .sidebar,.inspector{background:var(--panel);min-height:0;display:flex;flex-direction:column}
+  .sidebar{border-right:1px solid var(--line)}
+  .inspector{border-left:1px solid var(--line)}
+  .side-head,.inspect-head{height:46px;display:flex;align-items:center;padding:0 12px;border-bottom:1px solid var(--line);font-weight:750;gap:8px}
+  .search{margin:10px 10px 6px;width:calc(100% - 20px);padding:8px 10px;border-radius:7px;border:1px solid var(--line);background:#12161a;color:var(--text);outline:none}
+  .search:focus{border-color:#58718a}
+  .palette{padding:4px 7px 12px;overflow:auto;min-height:0;flex:1}
+  .group{margin:4px 0 8px}
+  .group-title{height:30px;display:flex;align-items:center;gap:7px;color:#aeb7c1;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;padding:0 8px}
+  .palette-item{min-height:42px;display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:7px;cursor:pointer;color:#d1d7dd;user-select:none;border:1px solid transparent}
+  .palette-item:hover{background:#242b33}
+  .palette-item.active{background:#173821;border-color:#2e7142;color:#dcffe5;box-shadow:inset 3px 0 0 var(--accent)}
+  .picon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;color:#6bf27f;flex:0 0 auto}
+  .picon svg{width:20px;height:20px;display:block;overflow:visible}
+  .pmeta{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+  .pname{font-weight:700;color:#edf2f7;white-space:nowrap;flex:0 0 auto}
+  .pdesc{font-size:12px;color:#8e98a4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+  .pshort{font-size:12px;color:#7c8793;white-space:nowrap;flex:0 0 auto}
+  .palette-item.active .pname{color:#ecfff2}
+  .palette-item.active .pdesc,.palette-item.active .pshort{color:#b8d6c1}
+  .indent{margin-left:18px}
+  .node-tree-wrap{height:215px;border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:120px}
+  .node-tree-title{height:38px;display:flex;align-items:center;padding:0 11px;font-size:12px;font-weight:800;color:#aeb7c1;letter-spacing:.05em}
+  .node-tree{overflow:auto;padding:0 7px 10px;flex:1}
+  .tree-row{height:29px;display:flex;align-items:center;gap:6px;border-radius:6px;padding-right:6px;color:#cbd3dc;cursor:pointer;font-size:13px}
+  .tree-row:hover{background:#252c34}.tree-row.active{background:#28334a;color:#fff}
+  .tree-icon{width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;color:#67f36d;flex:0 0 auto}
+  .tree-icon svg{width:16px;height:16px;display:block;overflow:visible}
+  .tree-type{margin-left:auto;color:#6f7b88;font-size:11px;max-width:90px;overflow:hidden;text-overflow:ellipsis}
+
+  .stage-area{min-width:0;min-height:0;display:grid;grid-template-rows:46px 1fr;background:#111419}
+  .stage-toolbar{display:flex;align-items:center;gap:7px;padding:0 10px;background:#1a1f25;border-bottom:1px solid var(--line);overflow:auto}
+  .toolbtn{padding:6px 9px;font-size:13px}
+  .toolbtn.active{border-color:#4d82b7;background:#20364b;color:#cfe8ff}
+  .sep{width:1px;height:22px;background:var(--line);margin:0 2px}
+  .field-inline{display:flex;align-items:center;gap:5px;color:#9ca8b4;font-size:12px;white-space:nowrap}
+  .field-inline input,.field-inline select{width:70px;background:#101419;border:1px solid var(--line);color:var(--text);border-radius:6px;padding:5px 6px;outline:none}
+  .field-inline select{width:auto}
+  .stage-scroll{position:relative;overflow:auto;background:radial-gradient(circle at 1px 1px,#232831 1px,transparent 0);background-size:22px 22px}
+  .stage-center{min-width:100%;min-height:100%;display:flex;align-items:flex-start;justify-content:center;padding:42px}
+  .board-wrap{position:relative;flex:0 0 auto;box-shadow:var(--shadow)}
+  .board{position:absolute;left:0;top:0;transform-origin:0 0;background:#f6f7f9;overflow:visible;user-select:none;touch-action:none}
+  .board.grid{background-color:#f6f7f9;background-image:linear-gradient(#dfe3e8 1px,transparent 1px),linear-gradient(90deg,#dfe3e8 1px,transparent 1px);background-size:8px 8px}
+  .canvas-hint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#8c96a3;border:1px dashed #b7bec8;background:#fff;padding:16px 22px;border-radius:12px;pointer-events:none;text-align:center;line-height:1.55;font-size:14px;box-shadow:0 12px 25px rgba(0,0,0,.08)}
+  .canvas-hint b{color:#4b5866}
+  .guide{position:absolute;background:#4ba3ff;pointer-events:none;z-index:9998}.guide.v{width:1px;top:0;bottom:0}.guide.h{height:1px;left:0;right:0}
+
+  .ui-node{position:absolute;min-width:6px;min-height:6px;border:1px solid #8f99a5;background:rgba(223,228,234,.68);color:#27313c;display:flex;align-items:center;justify-content:center;overflow:visible;cursor:default}
+  .ui-node.containerish{background:rgba(133,183,255,.08);border:1px dashed #74a8d8}
+  .ui-node.selected{outline:2px solid #3e9bff;outline-offset:1px;z-index:999!important}
+  .ui-node .node-badge{position:absolute;left:3px;top:3px;height:18px;max-width:calc(100% - 6px);padding:1px 6px;display:flex;align-items:center;border-radius:4px;background:#4a3d93;color:#fff;font-size:10px;font-weight:800;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+  .ui-node .node-type{position:absolute;right:3px;bottom:2px;font-size:9px;color:#64707d;background:#ffffffc9;border-radius:3px;padding:1px 4px;pointer-events:none}
+  .ui-node .actual-text{max-width:90%;max-height:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;pointer-events:none}
+  .ui-node.kind-button{border-radius:6px;background:#e9edf1;border-color:#adb6c0;box-shadow:inset 0 -2px 0 #d0d6dd}
+  .ui-node.kind-label{border-color:transparent;background:transparent}.ui-node.kind-label:not(.selected){outline:1px dashed #aab3bd;outline-offset:-1px}
+  .ui-node.kind-input{background:#fff;border:1px solid #aab4bf;border-radius:5px;justify-content:flex-start;padding-left:9px}
+  .ui-node.kind-panel{background:#e8ebef;border-color:#c4cbd3;border-radius:4px}
+  .ui-node.kind-color{background:linear-gradient(135deg,#f05555 0 25%,#60e06a 25% 50%,#4b84f3 50% 75%,#ffe45d 75%)}
+  .ui-node.kind-texture{background:conic-gradient(#dadfe5 25%,#f3f5f7 0 50%,#dadfe5 0 75%,#f3f5f7 0) 0 0/18px 18px}
+  .ui-node.kind-separator{background:transparent;border:0}.ui-node.kind-separator:after{content:"";position:absolute;left:3px;right:3px;top:50%;height:1px;background:#8e98a4}
+  .draw-preview{position:absolute;border:2px solid #34a5ff;background:rgba(52,165,255,.12);z-index:10000;pointer-events:none}
+  .draw-preview:after{content:attr(data-size);position:absolute;right:0;bottom:-22px;background:#0f2537;color:#cceaff;font-size:10px;padding:2px 5px;border-radius:4px;white-space:nowrap}
+  .resize-handle{position:absolute;width:9px;height:9px;background:#fff;border:2px solid #278fff;z-index:10001;border-radius:2px}
+  .rh-nw{left:-6px;top:-6px;cursor:nwse-resize}.rh-ne{right:-6px;top:-6px;cursor:nesw-resize}.rh-sw{left:-6px;bottom:-6px;cursor:nesw-resize}.rh-se{right:-6px;bottom:-6px;cursor:nwse-resize}
+
+  .inspect-body{overflow:auto;padding:10px 12px 18px;min-height:0;flex:1}
+  .empty-inspector{color:#84909d;font-size:13px;line-height:1.6;padding:20px 10px;text-align:center}
+  .section{margin-bottom:14px;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#181d22}
+  .section-title{height:34px;display:flex;align-items:center;padding:0 9px;background:#21272e;border-bottom:1px solid var(--line);font-size:12px;font-weight:800;color:#b8c0c9}
+  .section-body{padding:9px}
+  .form-row{display:grid;grid-template-columns:86px 1fr;align-items:center;gap:8px;margin:7px 0;font-size:12px;color:#9ca8b4}
+  .form-row input,.form-row select,.form-row textarea{width:100%;border:1px solid var(--line);background:#11161b;color:var(--text);border-radius:6px;padding:6px 7px;outline:none}
+  .form-row textarea{min-height:72px;resize:vertical}
+  .form-row input:focus,.form-row textarea:focus,.form-row select:focus{border-color:#527aa1}
+  .xywh{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .inspect-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+  .smallbtn{padding:7px 8px;font-size:12px}.smallbtn.danger{border-color:#633842;color:#ff9daa}.smallbtn.danger:hover{background:#40242a}
+  .hint{font-size:11px;color:#6e7a86;line-height:1.5;margin-top:5px}
+  .status{margin-left:auto;color:#7f8a96;font-size:11px;white-space:nowrap}
+
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);opacity:0;background:#0f1419;border:1px solid #35404b;color:#eaf2f8;padding:9px 13px;border-radius:8px;box-shadow:var(--shadow);pointer-events:none;transition:.22s;z-index:99999;font-size:13px}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .modal-back{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:100000}.modal-back.show{display:flex}
+  .modal{width:min(680px,calc(100vw - 40px));max-height:calc(100vh - 60px);overflow:auto;background:#1b2026;border:1px solid #3b4652;border-radius:12px;box-shadow:var(--shadow)}
+  .modal h2{font-size:17px;margin:0}.modal-head{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}.modal-body{padding:15px 17px;color:#c8d0d9;font-size:13px;line-height:1.7}.modal-close{margin-left:auto}
+  kbd{background:#0f1317;border:1px solid #47515b;border-bottom-width:2px;border-radius:4px;padding:1px 5px;color:#d9e2ea;font-size:11px}
+  .kbdline{display:grid;grid-template-columns:150px 1fr;gap:10px;margin:6px 0}
+  input[type=file]{display:none}
+  @media (max-width:1100px){.workspace{grid-template-columns:235px 1fr 280px}.project-title{width:130px}}
+
+  /* ===== Pro V2: interaction + Godot-like UX enhancements ===== */
+  .side-tools{padding:9px 9px 7px;border-bottom:1px solid var(--line);background:#181d22}
+  .side-tools-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;font-size:11px;color:#8f9aa6}
+  .active-tool-pill{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid #355a73;background:#172c3b;color:#a8d8ff;border-radius:999px;padding:3px 7px;font-size:10px}
+  .mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+  .mode-btn{border:1px solid var(--line);background:#11161b;color:#9ca8b4;border-radius:7px;padding:6px 8px;cursor:pointer;font-size:12px}
+  .mode-btn:hover{background:#252c34;color:#fff}
+  .mode-btn.active.select{background:#20364b;border-color:#4d82b7;color:#d8ecff}
+  .mode-btn.active.draw{background:#173821;border-color:#2e7142;color:#dcffe5}
+  .continuous-row{display:flex;align-items:center;justify-content:space-between;margin-top:7px;font-size:11px;color:#8f9aa6}
+  .continuous-row label{display:flex;align-items:center;gap:6px;cursor:pointer}
+  .continuous-row input{accent-color:#62f28a}
+  .node-tree-wrap{display:none}
+
+  .canvas-hud{position:absolute;left:12px;top:12px;z-index:15000;display:flex;align-items:center;gap:10px;padding:6px 9px;border:1px solid #3a4450;background:rgba(18,22,27,.9);backdrop-filter:blur(8px);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.24);font-size:11px;color:#aeb7c1;pointer-events:none}
+  .canvas-hud b{color:#dce5ed}
+  .canvas-hud .scene-file{color:#8ff0a8;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .canvas-hud .cursor-pos{color:#89c6ff;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .canvas-hud .hud-sep{width:1px;height:13px;background:#3a4450}
+  .stage-scroll.space-pan{cursor:grab}
+  .stage-scroll.panning{cursor:grabbing}
+  .board-corner-badge{position:absolute;right:0;top:0;transform:translateY(-100%);background:#252c34;border:1px solid #3b4550;border-bottom:0;color:#9aa6b2;padding:3px 7px;border-radius:6px 6px 0 0;font:10px ui-monospace,SFMono-Regular,Menlo,monospace;pointer-events:none}
+
+  .ui-node .node-badge{left:0;top:-21px;height:19px;max-width:100%;padding:2px 7px;border-radius:4px 4px 0 0;background:#171c22;color:#f1f5f8;border:1px solid #515c68;font-size:9px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;box-shadow:0 2px 5px rgba(0,0,0,.28)}
+  .ui-node .node-badge .badge-type{color:#8ff0a8;font-weight:600}
+  .ui-node .node-badge .badge-name{font-weight:800}
+  .ui-node.kind-progress{background:#161b20;border-radius:6px;border-color:#7c8792;overflow:hidden}
+  .ui-node.kind-progress:before{content:"";position:absolute;left:0;top:0;bottom:0;width:62%;background:var(--preview-color,#62a8ff);opacity:.82}
+  .ui-node.kind-check{justify-content:flex-start;padding-left:30px;background:#e9edf1;border-radius:5px}
+  .ui-node.kind-check:before{content:"✓";position:absolute;left:8px;width:15px;height:15px;border:1px solid #73808d;border-radius:3px;display:grid;place-items:center;font-size:10px;background:#fff}
+  .resize-handle{width:9px;height:9px;background:#fff;border:2px solid #278fff;box-shadow:0 1px 4px rgba(0,0,0,.28)}
+  .rh-n{left:50%;top:-6px;transform:translateX(-50%);cursor:ns-resize}.rh-s{left:50%;bottom:-6px;transform:translateX(-50%);cursor:ns-resize}
+  .rh-e{right:-6px;top:50%;transform:translateY(-50%);cursor:ew-resize}.rh-w{left:-6px;top:50%;transform:translateY(-50%);cursor:ew-resize}
+  .resize-handle:hover{background:#dffff0;border-color:#32c965;transform:scale(1.15)}
+  .rh-n:hover,.rh-s:hover{transform:translateX(-50%) scale(1.15)}.rh-e:hover,.rh-w:hover{transform:translateY(-50%) scale(1.15)}
+
+  .inspect-tabs{height:39px;display:grid;grid-template-columns:1fr 1fr;background:#171c22;border-bottom:1px solid var(--line)}
+  .inspect-tab{border:0;border-bottom:2px solid transparent;background:transparent;color:#87939f;cursor:pointer;font-size:12px;font-weight:700}
+  .inspect-tab:hover{color:#fff;background:#ffffff06}
+  .inspect-tab.active{color:#fff;border-bottom-color:#6fb6ff;background:#20262d}
+  .inspect-tab.tree.active{border-bottom-color:#62f28a}
+  .scene-tree-body{display:none;overflow:auto;padding:8px;min-height:0;flex:1}
+  .scene-tree-body.active{display:block}
+  .inspect-body.hidden{display:none}
+  .tree-root{padding:7px 8px;margin-bottom:5px;border-bottom:1px solid var(--line);font-size:12px;color:#bcc5ce;display:flex;justify-content:space-between}
+  .tree-root small{color:#73808d}
+  .tree-row{min-height:30px;height:auto}
+  .tree-indent-line{border-left:1px solid #37414b}
+
+  .context-menu{position:fixed;display:none;z-index:120000;min-width:165px;background:#1d232a;border:1px solid #3b4652;border-radius:9px;box-shadow:0 16px 38px rgba(0,0,0,.45);padding:5px}
+  .context-menu.show{display:block}
+  .context-menu button{width:100%;text-align:left;border:0;background:transparent;color:#d6dde4;padding:7px 9px;border-radius:6px;cursor:pointer;font-size:12px}
+  .context-menu button:hover{background:#2a333d}.context-menu button.danger{color:#ff9baa}.context-menu button.danger:hover{background:#3a2329}
+  .context-sep{height:1px;background:#353f49;margin:4px 2px}
+
+  .md-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:28px;background:rgba(0,0,0,.72);z-index:110000}
+  .md-modal.show{display:flex}
+  .md-card{width:min(980px,95vw);height:min(760px,90vh);display:flex;flex-direction:column;background:#171c22;border:1px solid #3c4752;border-radius:12px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.55)}
+  .md-head,.md-foot{display:flex;align-items:center;gap:8px;padding:11px 13px;background:#20262d;border-bottom:1px solid var(--line)}
+  .md-foot{border-bottom:0;border-top:1px solid var(--line);justify-content:flex-end}
+  .md-title{font-weight:800;font-size:13px}.md-sub{font-size:10px;color:#81909e}
+  .md-preview{flex:1;overflow:auto;margin:0;padding:16px;background:#0e1216;color:#aef6bf;white-space:pre-wrap;word-break:break-word;font:11px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;user-select:text}
+  .color-row{display:grid;grid-template-columns:42px 1fr;gap:7px}.color-row input[type="color"]{width:42px;height:30px;padding:2px}
+  .form-note{font-size:10px;color:#75818d;margin-top:4px;line-height:1.45}
+
+
+
+  /* ===== Clean Godot Theme: visual/proportion refresh only ===== */
+  :root{
+    --bg:#23262d;
+    --panel:#2b2e35;
+    --panel2:#30343c;
+    --panel3:#373c46;
+    --line:#3a3f4a;
+    --text:#dde1e9;
+    --muted:#969eae;
+    --accent:#6996f4;
+    --accent2:#6996f4;
+    --node:#6996f4;
+    --danger:#e06c75;
+    --warning:#e5c07b;
+    --green:#86d993;
+    --shadow:0 12px 40px rgba(0,0,0,.42);
+  }
+
+  html,body{background:var(--bg);font-size:13px}
+  .app{grid-template-rows:44px 36px 1fr}
+
+  /* 顶栏：更扁、更轻，接近桌面软件而不是网页后台 */
+  .topbar{
+    gap:6px;padding:0 9px;background:var(--bg);border-bottom:1px solid #1c1e23;
+    box-shadow:none;
+  }
+  .brand{min-width:170px;gap:8px;font-weight:650}
+  .brand-mark{width:21px;height:21px;border-color:var(--accent);border-radius:5px;box-shadow:none}
+  .brand-mark:after{width:5px;height:5px;left:6px;top:6px;background:#fff}
+  .project-title{width:145px;height:28px;padding:0 7px;border-radius:5px;font-size:12px;font-weight:600}
+  .project-title:focus{background:var(--panel2);border-color:var(--accent)}
+  .topbtn,.toolbtn,.smallbtn{
+    height:28px;padding:0 9px;border-radius:5px;background:var(--panel2);border-color:var(--line);
+    font-size:12px;box-shadow:none;
+  }
+  .topbtn:hover,.toolbtn:hover,.smallbtn:hover{background:var(--panel3);border-color:#4b5260}
+  .topbtn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:650}
+  .topbtn.primary:hover{background:#547dd4;border-color:#547dd4;filter:none}
+
+  /* 场景标签：像桌面编辑器页签，去掉大圆角与厚重块感 */
+  .tabsbar{
+    padding:0 7px;gap:0;align-items:stretch;background:#202329;border-bottom:1px solid #1c1e23;
+  }
+  .tabs{gap:0}
+  .tab{
+    height:35px;min-width:112px;max-width:200px;padding:0 11px;gap:7px;border:0;border-right:1px solid #1c1e23;
+    border-radius:0;background:transparent;color:var(--muted);font-size:12px;
+  }
+  .tab:hover{background:rgba(255,255,255,.035);color:var(--text)}
+  .tab.active{background:var(--panel);color:var(--text);border-color:#1c1e23;box-shadow:inset 0 -2px 0 var(--accent)}
+  .tab-close{opacity:0}
+  .tab:hover .tab-close{opacity:.7}
+  .tab-add{height:35px;width:34px;margin:0;border:0;border-right:1px solid #1c1e23;border-radius:0;background:transparent}
+  .tab-add:hover{background:rgba(255,255,255,.04);color:#fff}
+
+  /* 主体比例：左窄、右略宽，中间尽可能让给画板 */
+  .workspace{grid-template-columns:218px 1fr 272px}
+  .sidebar,.inspector{background:var(--panel)}
+  .sidebar{border-right:1px solid #1c1e23}
+  .inspector{border-left:1px solid #1c1e23}
+  .side-head{height:36px;padding:0 10px;font-size:11px;font-weight:650;color:var(--muted);border-bottom:1px solid #1c1e23}
+
+  /* 左侧工具与搜索 */
+  .side-tools{padding:7px 8px 6px;background:#292c33;border-bottom:1px solid #1c1e23}
+  .side-tools-head{margin-bottom:5px;font-size:10.5px;color:var(--muted)}
+  .active-tool-pill{max-width:118px;padding:2px 6px;border-radius:4px;border-color:rgba(105,150,244,.4);background:rgba(105,150,244,.12);color:#a9bfe8}
+  .mode-grid{gap:4px}
+  .mode-btn{height:28px;padding:0 6px;border-radius:4px;background:#23262d;border-color:var(--line);font-size:11px;color:var(--muted)}
+  .mode-btn:hover{background:#343943}
+  .mode-btn.active.select{background:rgba(105,150,244,.16);border-color:var(--accent);color:#bcd0ff}
+  .mode-btn.active.draw{background:rgba(134,217,147,.10);border-color:#6ebd7b;color:#b9efc2}
+  .continuous-row{margin-top:6px;font-size:10.5px}
+  .continuous-row input{accent-color:var(--accent)}
+  .search{height:28px;margin:8px 9px 5px;width:calc(100% - 18px);padding:0 8px;border-radius:5px;background:var(--bg);border-color:var(--line);font-size:11.5px}
+  .search:focus{border-color:var(--accent)}
+  .palette{padding:4px 6px 12px}
+  .group{margin:2px 0 5px}
+  .group-title{height:25px;padding:0 7px;color:#7f8796;font-size:10px;font-weight:700;letter-spacing:.055em}
+  .palette-item{min-height:34px;gap:7px;padding:4px 7px;border-radius:5px;margin-bottom:1px}
+  .palette-item:hover{background:rgba(255,255,255,.045)}
+  .palette-item.active{background:rgba(105,150,244,.15);border-color:var(--accent);box-shadow:none;color:var(--text)}
+  .picon{width:16px;height:16px;border-width:1.5px;border-color:var(--green);color:var(--green);border-radius:3px;font-size:9px}
+  .palette-item.active .picon{color:var(--accent2)}
+  .pmeta{gap:7px}
+  .pname{font-size:11.5px;font-weight:600}
+  .pdesc{font-size:10px;color:#8891a0}
+  .pshort{display:none}
+
+  /* 中间工具条 */
+  .stage-area{grid-template-rows:38px 1fr;background:#1d1f24}
+  .stage-toolbar{gap:5px;padding:0 8px;background:#292c33;border-bottom:1px solid #1c1e23}
+  .stage-toolbar .toolbtn{height:27px;padding:0 8px;border-radius:4px;font-size:11.5px}
+  .toolbtn.active{background:rgba(105,150,244,.16);border-color:var(--accent);color:#c8d7ff}
+  .sep{height:18px;background:#424752;margin:0 1px}
+  .field-inline{gap:4px;font-size:10.5px;color:var(--muted)}
+  .field-inline input,.field-inline select{height:26px;padding:0 6px;border-radius:4px;background:#23262d;border-color:var(--line);font-size:11px}
+  .field-inline input{width:58px}
+  .field-inline select{width:auto}
+  #zoomLabel{font-size:11px!important;color:var(--muted)!important;min-width:39px!important}
+  .status{font-size:10px;color:#747d8c}
+
+  /* 画板区域：参考 Godot 的中灰工作区，去掉纯白画布的网页感 */
+  .stage-scroll{background:#1d1f24;background-image:none}
+  .stage-center{padding:46px}
+  .board-wrap{box-shadow:0 0 0 1px #14161a,0 12px 40px rgba(0,0,0,.5)}
+  .board{background:#34393f}
+  .board.grid{
+    background-color:#34393f;
+    background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px)
+  }
+  .canvas-hint{color:#9ba4b2;border-color:#59606d;background:#2b2f36;border-radius:7px;box-shadow:0 8px 22px rgba(0,0,0,.24);font-size:12px;padding:13px 18px}
+  .canvas-hint b{color:#d6dbe4}
+  .canvas-hud{top:10px;left:10px;padding:5px 8px;gap:8px;border-radius:5px;background:rgba(43,46,53,.93);border-color:#454b57;box-shadow:0 5px 16px rgba(0,0,0,.25);font-size:10px;color:var(--muted)}
+  .canvas-hud .scene-file{color:#a9bfe8}
+  .canvas-hud .cursor-pos{color:#8fb0f2}
+  .canvas-hud .hud-sep{background:#505662}
+  .board-corner-badge{background:#2b2e35;border-color:#454b57;color:#8891a0;border-radius:4px 4px 0 0}
+
+  /* 节点选中与徽标：蓝色为主，绿色只做容器语义 */
+  .ui-node.selected{outline:1.5px solid var(--accent);outline-offset:0}
+  .ui-node.containerish{background:rgba(134,217,147,.045);border-color:rgba(134,217,147,.58)}
+  .ui-node .node-badge{top:-19px;height:18px;padding:1px 5px;border-radius:3px 3px 0 0;background:rgba(20,22,26,.9);border-color:rgba(105,150,244,.42);font-size:9px;box-shadow:none}
+  .ui-node .node-badge .badge-type{color:#9db8f5}
+  .ui-node .node-type{color:#7d8795;background:rgba(35,38,45,.82);border-radius:3px}
+  .resize-handle{width:9px;height:9px;border:1.5px solid var(--accent);border-radius:2px;box-shadow:none}
+  .resize-handle:hover{background:#fff;border-color:var(--accent)}
+
+  /* Inspector：减少“卡片套卡片”，更接近原生编辑器属性栏 */
+  .inspect-tabs{height:36px;background:#292c33;border-bottom:1px solid #1c1e23}
+  .inspect-tab{font-size:11.5px;font-weight:600;color:var(--muted)}
+  .inspect-tab.active{background:var(--panel);border-bottom-color:var(--accent)}
+  .inspect-tab.tree.active{border-bottom-color:var(--accent)}
+  .inspect-body{padding:9px 11px 16px}
+  .section{margin-bottom:12px;border:0;border-radius:0;overflow:visible;background:transparent}
+  .section-title{height:28px;padding:0 2px;background:transparent;border-bottom:1px solid #3a3f4a;color:#a7afbd;font-size:10.5px;font-weight:700;letter-spacing:.035em}
+  .section-body{padding:7px 1px 0}
+  .form-row{grid-template-columns:76px 1fr;gap:7px;margin:6px 0;font-size:10.5px;color:var(--muted)}
+  .form-row input,.form-row select,.form-row textarea{min-height:28px;padding:5px 7px;border-radius:5px;background:var(--bg);border-color:var(--line);font-size:11.5px}
+  .form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--accent)}
+  .form-row textarea{min-height:58px}
+  .hint,.form-note{font-size:9.8px;color:#747d8c;line-height:1.45}
+  .smallbtn{height:29px;border-radius:5px;background:var(--panel2)}
+  .smallbtn.danger{border-color:#5c3a42;color:#d9858f}
+  .tree-root{padding:7px 5px;border-color:#3a3f4a;font-size:11.5px}
+  .tree-row{min-height:28px;border-radius:4px;font-size:11.5px}
+  .tree-row:hover{background:rgba(255,255,255,.045)}
+  .tree-row.active{background:rgba(105,150,244,.15);color:#fff}
+  .tree-icon{width:15px;height:15px;color:#67f36d}
+  .tree-type{font-size:9.5px;color:#77808e}
+  .tree-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .godot-icon.is-abstract{opacity:.58;color:#9ea6b1}
+
+  /* 弹层也统一颜色，不改交互 */
+  .modal,.md-card{background:var(--panel);border-color:#454b57;border-radius:8px}
+  .modal-head,.md-head,.md-foot{background:#30343c;border-color:#1c1e23}
+  .modal-body{color:#c7cdd7}
+  .md-preview{background:#1d1f24;color:#b8d4ff}
+  .context-menu{background:#30343c;border-color:#4a505c;border-radius:6px}
+  .context-menu button:hover{background:#3a404a}
+  .toast{background:#3a404b;border-color:#505764;border-radius:6px}
+
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#444a56;border-radius:6px;border:2px solid var(--bg)}
+  ::-webkit-scrollbar-thumb:hover{background:#555d6c}
+
+  @media (max-width:1100px){
+    .workspace{grid-template-columns:200px 1fr 252px}
+    .brand{min-width:150px}.project-title{width:112px}
+  }
+
+
+  /* ===== V3: 中文说明可读 / 场景树验证 / Godot .tscn 导出 ===== */
+  .palette-item{min-height:46px!important;align-items:flex-start!important;padding-top:6px!important;padding-bottom:6px!important}
+  .picon{margin-top:2px}
+  .pmeta{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:1px!important;min-width:0;line-height:1.2}
+  .pname{font-size:11.5px!important;line-height:1.25;white-space:nowrap}
+  .pdesc{display:block!important;font-size:9.7px!important;line-height:1.35!important;color:#949dad!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;max-width:100%}
+  .palette-item.active .pdesc{color:#b9c8e8!important}
+
+  .validation-box{margin-top:8px;padding:7px 8px;border:1px solid #414854;border-radius:5px;background:#252930;font-size:10.5px;line-height:1.5}
+  .validation-box.ok{border-color:rgba(134,217,147,.42);background:rgba(134,217,147,.06);color:#b7e8bf}
+  .validation-box.warn{border-color:rgba(229,192,123,.45);background:rgba(229,192,123,.07);color:#e7cd95}
+  .validation-box.error{border-color:rgba(224,108,117,.5);background:rgba(224,108,117,.08);color:#eca0a7}
+  .validation-title{font-weight:700;margin-bottom:3px}
+  .validation-item{margin-top:2px;color:inherit}
+  .tree-status{margin-left:auto;font-size:10px;line-height:1;flex:0 0 auto}
+  .tree-status.ok{color:#86d993}.tree-status.warn{color:#e5c07b}.tree-status.error{color:#e06c75}
+  .tree-row .tree-type{margin-left:6px}
+  .tree-children-guide{position:absolute;border-left:1px solid rgba(134,217,147,.18);pointer-events:none}
+
+  .godot-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:28px;background:rgba(0,0,0,.72);z-index:110500}
+  .godot-modal.show{display:flex}
+  .godot-card{width:min(1040px,96vw);height:min(790px,91vh);display:flex;flex-direction:column;background:var(--panel);border:1px solid #454b57;border-radius:8px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.55)}
+  .godot-head,.godot-foot{display:flex;align-items:center;gap:8px;padding:10px 13px;background:#30343c;border-bottom:1px solid #1c1e23}
+  .godot-foot{border-bottom:0;border-top:1px solid #1c1e23;justify-content:flex-end}
+  .godot-title{font-size:13px;font-weight:700}.godot-sub{font-size:10px;color:#8891a0;margin-top:2px}
+  .godot-preview-wrap{display:grid;grid-template-columns:290px 1fr;min-height:0;flex:1;background:#1d1f24}
+  .godot-tree-preview{border-right:1px solid #343943;overflow:auto;padding:12px;background:#25282f}
+  .godot-tree-preview h4{font-size:10.5px;color:#8f98a6;margin:0 0 8px;font-weight:700;letter-spacing:.04em}
+  .godot-tree-line{font:11.5px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#d7dce5;white-space:pre}
+  .godot-tree-line .type{color:#86d993}.godot-tree-line .name{color:#f0f2f6}
+  .godot-code{margin:0;padding:14px 16px;overflow:auto;white-space:pre;user-select:text;color:#b8d4ff;background:#1d1f24;font:11px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .godot-validation-bar{padding:7px 12px;border-top:1px solid #343943;background:#252930;font-size:10.5px;color:#9ba4b2}
+  .godot-validation-bar.error{color:#eca0a7;background:rgba(224,108,117,.08)}
+  .godot-validation-bar.warn{color:#e7cd95;background:rgba(229,192,123,.07)}
+
+
+  /* ===== 快速草图 / 尺寸策略 ===== */
+  .layout-policy-card{margin:10px 10px 0;padding:10px 11px;border:1px solid #3a424c;background:#20252c;border-radius:8px;flex:0 0 auto}
+  .layout-policy-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .layout-policy-title{font-size:12px;font-weight:800;color:#e6ebf0;display:flex;align-items:center;gap:7px}
+  .layout-policy-title .policy-dot{width:8px;height:8px;border-radius:50%;background:#77818d;box-shadow:0 0 0 3px rgba(119,129,141,.12)}
+  .layout-policy-card.on{border-color:rgba(105,150,244,.62);background:rgba(105,150,244,.085)}
+  .layout-policy-card.on .policy-dot{background:#6996f4;box-shadow:0 0 0 3px rgba(105,150,244,.18)}
+  .layout-policy-desc{font-size:10.5px;line-height:1.55;color:#8f99a5;margin-top:7px}
+  .layout-policy-desc b{color:#b8c9eb;font-weight:700}
+  .policy-switch{position:relative;width:36px;height:20px;flex:0 0 auto}
+  .policy-switch input{position:absolute;opacity:0;pointer-events:none}
+  .policy-slider{position:absolute;inset:0;border-radius:999px;background:#3b424b;border:1px solid #4c5561;cursor:pointer;transition:.15s}
+  .policy-slider:after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#a9b0b9;transition:.15s}
+  .policy-switch input:checked + .policy-slider{background:#547dd4;border-color:#6996f4}
+  .policy-switch input:checked + .policy-slider:after{left:18px;background:#fff}
+  .policy-badge{display:inline-block;margin-top:7px;padding:2px 6px;border-radius:4px;background:#15191e;border:1px solid #343c45;color:#798490;font-size:9.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .layout-policy-card.on .policy-badge{border-color:rgba(105,150,244,.35);color:#9db8f5;background:rgba(36,48,75,.6)}
+
+
+
+  /* ===== V3.2 背景参考图：上传 / 拖入截图 ===== */
+  .bg-ref-card{margin:8px 10px 0;padding:10px 11px;border:1px solid #3a424c;background:#20252c;border-radius:8px;flex:0 0 auto}
+  .bg-ref-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .bg-ref-title{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;color:#e6ebf0}
+  .bg-ref-icon{width:17px;height:17px;color:#86d993;flex:0 0 auto}
+  .bg-ref-desc{margin-top:6px;color:#8f99a5;font-size:10.2px;line-height:1.48}
+  .bg-ref-name{margin-top:7px;padding:5px 7px;border:1px solid #343c45;background:#171b20;border-radius:5px;color:#abb4c0;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bg-ref-name.empty{color:#69737f;font-style:italic}
+  .bg-ref-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}
+  .bg-ref-btn{height:29px;border:1px solid #454d59;background:#2b3038;border-radius:5px;color:#cbd2db;cursor:pointer;font-size:10.5px}
+  .bg-ref-btn:hover{border-color:#5c6674;background:#343a44;color:#fff}
+  .bg-ref-btn.primary{border-color:rgba(105,150,244,.6);background:rgba(105,150,244,.12);color:#abc3fa}
+  .bg-ref-btn.danger{color:#d99aa0}.bg-ref-btn.danger:hover{border-color:#9b5259;color:#ffadb4;background:rgba(224,108,117,.08)}
+  .bg-ref-controls{margin-top:8px;padding-top:8px;border-top:1px solid #343b45;display:grid;gap:7px}
+  .bg-ref-row{display:grid;grid-template-columns:62px 1fr;align-items:center;gap:7px;font-size:10px;color:#8994a1}
+  .bg-ref-row select{width:100%;height:27px;background:#171b20;border:1px solid #414955;color:#c9d0d8;border-radius:5px;padding:0 6px;font-size:10px;outline:none}
+  .bg-ref-row input[type="range"]{width:100%;accent-color:#6996f4}
+  .bg-ref-vis{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10.5px;color:#9aa5b1}
+  .bg-ref-vis input{accent-color:#6996f4}
+  .bg-ref-tip{margin-top:7px;color:#6f7b87;font-size:9.4px;line-height:1.45}
+  .board-bg-frame{position:absolute;z-index:0;box-sizing:border-box;user-select:none;touch-action:none;pointer-events:none}
+  .board-bg-frame.editing{z-index:500;pointer-events:auto;cursor:move;outline:1.5px solid #6996f4;outline-offset:0;box-shadow:0 0 0 1px rgba(255,255,255,.28)}
+  .board-bg-image{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none}
+  .bg-resize-handle{position:absolute;width:11px;height:11px;border:1.5px solid #6996f4;background:#fff;border-radius:2px;box-shadow:0 1px 5px rgba(0,0,0,.5);z-index:3}
+  .bg-resize-handle.nw{left:-6px;top:-6px;cursor:nwse-resize}.bg-resize-handle.ne{right:-6px;top:-6px;cursor:nesw-resize}
+  .bg-resize-handle.sw{left:-6px;bottom:-6px;cursor:nesw-resize}.bg-resize-handle.se{right:-6px;bottom:-6px;cursor:nwse-resize}
+  .bg-edit-label{position:absolute;left:0;top:-23px;height:20px;display:flex;align-items:center;padding:0 7px;border-radius:4px 4px 0 0;background:#232a35;border:1px solid #6996f4;color:#bcd0ff;font-size:9.5px;white-space:nowrap;pointer-events:none}
+  .bg-ref-edit-btn{width:100%;margin-top:6px}
+  .bg-drop-overlay{position:absolute;inset:14px;z-index:30000;display:none;align-items:center;justify-content:center;border:2px dashed #7ea6f8;border-radius:9px;background:rgba(41,53,75,.82);backdrop-filter:blur(5px);color:#d9e5ff;font-size:15px;font-weight:750;letter-spacing:.02em;pointer-events:none;text-align:center;padding:20px}
+  .bg-drop-overlay.show{display:flex}
+  .bg-drop-overlay small{display:block;margin-top:6px;color:#aebbd3;font-size:10.5px;font-weight:500}
+
+
+  /* ===== V3.4: Godot「添加子节点」式可折叠继承树 ===== */
+  .palette{padding:5px 5px 14px!important}
+  .group,.group-title{display:none!important}
+  .godot-palette-tree{display:flex;flex-direction:column;gap:0;min-width:max-content;width:100%}
+  .palette-tree-row{
+    --depth:0;
+    height:31px;min-height:31px;display:flex;align-items:center;
+    padding:0 6px 0 calc(4px + var(--depth) * 20px);
+    border:1px solid transparent;border-radius:4px;cursor:pointer;user-select:none;
+    color:#d8dde5;font-size:12.5px;line-height:1;white-space:nowrap;
+  }
+  .palette-tree-row:hover{background:rgba(255,255,255,.045)}
+  .palette-tree-row.active{background:rgba(105,150,244,.19);border-color:rgba(105,150,244,.82);color:#fff}
+  .palette-tree-row.abstract{color:#858b96}
+  .palette-tree-row.abstract .palette-tree-icon{color:#858b96;opacity:.75}
+  .palette-tree-row.active.abstract{color:#d4d9e2}
+  .palette-tree-row.active.abstract .palette-tree-icon{color:#90adf5;opacity:1}
+  .palette-disclosure{
+    width:16px;height:22px;display:flex;align-items:center;justify-content:center;flex:0 0 16px;
+    color:#858b96;margin-right:2px;border-radius:3px;
+  }
+  .palette-disclosure.has-children{cursor:pointer}
+  .palette-disclosure.has-children:hover{color:#e1e6ed;background:rgba(255,255,255,.055)}
+  .palette-disclosure svg{width:9px;height:9px;display:block;transition:transform .08s ease}
+  .palette-disclosure.open svg{transform:rotate(90deg)}
+  .palette-disclosure.placeholder{visibility:hidden}
+  .palette-tree-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex:0 0 20px;color:#63ef7b;margin-right:7px}
+  .palette-tree-icon svg{width:19px;height:19px;display:block;overflow:visible}
+  .palette-tree-name{font-weight:500;letter-spacing:0;flex:0 0 auto;color:inherit}
+  .palette-tree-desc{
+    margin-left:10px;color:#7f8898;font-size:10.5px;font-weight:400;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:112px;
+  }
+  .palette-tree-row.active .palette-tree-desc{color:#afbedf}
+  .palette-tree-spacer{height:3px}
+  .palette-tree-empty{padding:24px 12px;color:#77808e;text-align:center;font-size:11px}
+  .palette-search-note{padding:2px 8px 6px;color:#737d8c;font-size:9.5px;line-height:1.4}
+  @media (max-width:1100px){.palette-tree-desc{max-width:78px}}
+
+
+  /* 左侧面板宽度拖拽 */
+  .workspace{grid-template-columns:var(--sidebar-w,280px) 12px minmax(0,1fr) 310px !important}
+  .sidebar-splitter{position:relative;background:#15191e;border-right:1px solid #262d36;border-left:1px solid #0e1115;cursor:col-resize;user-select:none;touch-action:none;z-index:50}
+  .sidebar-splitter:hover,.sidebar-splitter.dragging{background:#1c232c}
+  .sidebar-splitter::before{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:3px;height:52px;border-radius:999px;background:#556070;box-shadow:0 -10px 0 #556070,0 10px 0 #556070;opacity:.92}
+  .sidebar-splitter::after{content:"拖动";position:absolute;left:50%;top:calc(50% + 40px);transform:translateX(-50%) rotate(90deg);transform-origin:center;color:#778292;font-size:10px;letter-spacing:.08em;opacity:.72;pointer-events:none}
+  .sidebar-resize-hint{margin-left:auto;font-size:11px;color:#7d8793;font-weight:600}
+  @media (max-width:1100px){.workspace{grid-template-columns:var(--sidebar-w,235px) 10px minmax(0,1fr) 280px !important}}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand"><span class="brand-mark"></span><span>Godot UI Blueprint Pro V3.3</span></div>
+    <input id="projectTitle" class="project-title" value="Godot UI Project" title="项目名" />
+    <div class="spacer"></div>
+    <button id="undoBtn" class="topbtn history-btn" title="撤销：Mac ⌘Z / Windows Ctrl+Z">↶ 撤销</button>
+    <button id="redoBtn" class="topbtn history-btn" title="重做：Mac ⇧⌘Z / Windows Ctrl+Shift+Z（也支持 Ctrl+Y）">↷ 重做</button>
+    <button id="helpBtn" class="topbtn">使用说明</button>
+    <button id="previewMdBtn" class="topbtn">预览 .md</button>
+    <button id="exportGodotBtn" class="topbtn">导出 .tscn → Godot</button>
+    <button id="saveJsonBtn" class="topbtn">保存项目 JSON</button>
+    <label class="topbtn" for="loadJsonInput" style="cursor:pointer">载入 JSON</label><input id="loadJsonInput" type="file" accept="application/json,.json" />
+    <button id="exportMdBtn" class="topbtn primary">导出 .md → Codex/MCP</button>
+  </div>
+  <div class="tabsbar">
+    <div id="tabs" class="tabs"></div>
+    <button id="addScreenBtn" class="tab-add" title="新增界面">＋</button>
+  </div>
+
+  <div class="workspace">
+    <aside class="sidebar">
+      <div class="side-head">Godot UI 控件库 <span class="sidebar-resize-hint">可左右拉宽</span></div>
+      <div class="side-tools">
+        <div class="side-tools-head"><span>工具模式</span><span id="activeToolPill" class="active-tool-pill">选择模式 (V)</span></div>
+        <div class="mode-grid">
+          <button id="selectModeBtn" class="mode-btn select active">↖ 选择 / 移动 (V)</button>
+          <button id="drawModeBtn" class="mode-btn draw">✚ 斜拉绘制 (D)</button>
+        </div>
+        <div class="continuous-row">
+          <label><input id="continuousDrawToggle" type="checkbox"> 连续绘制同类控件</label>
+          <span id="drawTypeMini">Button</span>
+        </div>
+      </div>
+      <input id="paletteSearch" class="search" placeholder="搜索节点类型 / 中文说明…" />
+      <div class="palette-search-note">按 Godot Control 继承关系排列 · 点左侧箭头展开 / 折叠</div>
+      <div id="palette" class="palette"></div>
+      <div class="node-tree-wrap"><div id="nodeTree" class="node-tree"></div></div>
+    </aside>
+    <div id="sidebarResizeHandle" class="sidebar-splitter" title="左右拖动左侧控件库宽度；双击恢复默认宽度"></div>
+
+    <main class="stage-area">
+      <div class="stage-toolbar">
+        <button id="selectTool" class="toolbtn active">↖ 选择/移动 <span style="opacity:.55">V</span></button>
+        <div class="sep"></div>
+        <label class="field-inline">画板
+          <select id="presetSelect">
+            <option value="custom">自定义</option>
+            <option value="1152x648" selected>1152×648</option>
+            <option value="1280x720">1280×720</option>
+            <option value="1920x1080">1920×1080</option>
+            <option value="1080x1920">1080×1920</option>
+            <option value="750x1334">750×1334</option>
+          </select>
+        </label>
+        <label class="field-inline">W <input id="canvasW" type="number" min="64" max="7680" value="1152"></label>
+        <label class="field-inline">H <input id="canvasH" type="number" min="64" max="7680" value="648"></label>
+        <div class="sep"></div>
+        <button id="gridBtn" class="toolbtn active"># 网格</button>
+        <button id="snapBtn" class="toolbtn active">⌗ 吸附</button>
+        <label class="field-inline">步长
+          <select id="gridSizeSelect"><option value="8">8 px</option><option value="16">16 px</option><option value="32">32 px</option><option value="4">4 px</option></select>
+        </label>
+        <div class="sep"></div>
+        <button id="zoomOut" class="toolbtn">−</button>
+        <span id="zoomLabel" style="font-size:12px;color:#9faab5;min-width:43px;text-align:center">80%</span>
+        <button id="zoomIn" class="toolbtn">＋</button>
+        <button id="fitBtn" class="toolbtn">适应</button>
+        <div id="status" class="status"></div>
+      </div>
+      <div id="stageScroll" class="stage-scroll">
+        <div id="bgDropOverlay" class="bg-drop-overlay"><div>松开鼠标，把图片设为当前界面背景<small>PNG / JPG / WebP / 截图文件都可以</small></div></div>
+        <div class="canvas-hud">
+          <span>场景 <b id="hudScene" class="scene-file">主界面.tscn</b></span>
+          <span class="hud-sep"></span>
+          <span>指针 <b id="cursorHud" class="cursor-pos">X: 0, Y: 0</b></span>
+          <span class="hud-sep"></span>
+          <span>空格 / 中键拖拽画布 · Ctrl/⌘+滚轮缩放</span>
+        </div>
+        <div id="stageCenter" class="stage-center">
+          <div id="boardWrap" class="board-wrap">
+            <div id="board" class="board grid"></div>
+            <div id="boardCornerBadge" class="board-corner-badge">1152 × 648</div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="inspector">
+      <div class="inspect-tabs">
+        <button id="inspectorTabBtn" class="inspect-tab active">属性检查器</button>
+        <button id="sceneTreeTabBtn" class="inspect-tab tree">场景树结构</button>
+      </div>
+      <div id="layoutPolicyCard" class="layout-policy-card">
+        <div class="layout-policy-head">
+          <div class="layout-policy-title"><span class="policy-dot"></span><span>不严格按照尺寸</span></div>
+          <label class="policy-switch" title="开启后：导出的 MD 会把当前 Rect 当作快速草图参考，而不是必须逐像素照搬">
+            <input id="looseLayoutToggle" type="checkbox">
+            <span class="policy-slider"></span>
+          </label>
+        </div>
+        <div class="layout-policy-desc">用于<b>快速大概布局</b>。开启后，MD 会要求 AI：若原项目已有 UI / MD / Theme / 分辨率规范则优先遵循；否则允许基于实际界面和 Godot 布局系统优化具体尺寸与间距。</div>
+        <span id="layoutPolicyBadge" class="policy-badge">精确尺寸模式</span>
+      </div>
+      <div id="bgRefCard" class="bg-ref-card">
+        <div class="bg-ref-head">
+          <div class="bg-ref-title">
+            <svg class="bg-ref-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"><rect x="2.2" y="3.1" width="11.6" height="9.8" rx="1.3"/><circle cx="5.4" cy="6.5" r="1.2"/><path d="M3.5 11.7 6.7 8.5l2 2 1.5-1.5 2.3 2.7"/></svg>
+            <span>背景参考图</span>
+          </div>
+          <label class="bg-ref-vis" title="只隐藏参考图，不删除"><input id="bgVisibleToggle" type="checkbox" checked>显示</label>
+        </div>
+        <div class="bg-ref-desc">把 UI 截图 / 原画临时放在画板底下，方便直接照着摆控件。<b>仅供当前编辑使用，不会保存进项目，也不会导出。</b></div>
+        <div id="bgFileName" class="bg-ref-name empty">当前界面还没有背景图</div>
+        <div class="bg-ref-actions">
+          <button id="bgUploadBtn" class="bg-ref-btn primary">选择图片…</button>
+          <button id="bgClearBtn" class="bg-ref-btn danger">移除背景</button>
+        </div>
+        <button id="bgEditBtn" class="bg-ref-btn bg-ref-edit-btn" disabled>编辑位置 / 大小</button>
+        <input id="bgFileInput" type="file" accept="image/*" style="display:none">
+        <div class="bg-ref-controls">
+          <div class="bg-ref-row"><span>透明度</span><input id="bgOpacityRange" type="range" min="5" max="100" value="55"></div>
+          <div class="bg-ref-row"><span>适配方式</span><select id="bgFitSelect"><option value="contain">完整显示</option><option value="cover">铺满裁切</option><option value="fill">拉伸铺满</option></select></div>
+        </div>
+        <div class="bg-ref-tip">图片刚放进来会自动进入<b>摆放模式</b>：拖图片可移动，拖四角可缩放；按 <b>Esc</b> 或点“完成摆放”退出。也支持拖入截图文件或 <b>⌘V / Ctrl+V</b> 粘贴。背景图仍然只是临时参考，不保存、不导出。</div>
+      </div>
+      <div id="inspectorBody" class="inspect-body"></div>
+      <div id="sceneTreeBody" class="scene-tree-body"></div>
+    </aside>
+  </div>
+</div>
+
+<div id="tabContextMenu" class="context-menu">
+  <button id="ctxRename">✎ 重命名场景</button>
+  <button id="ctxDuplicate">⧉ 复制场景副本</button>
+  <div class="context-sep"></div>
+  <button id="ctxClose" class="danger">× 关闭场景</button>
+</div>
+
+<div id="mdModal" class="md-modal">
+  <div class="md-card">
+    <div class="md-head">
+      <div><div class="md-title">Godot UI Blueprint · Markdown 预览</div><div class="md-sub">这是交给 Codex / Godot MCP 的结构规范，不是玩家可见 UI。</div></div>
+      <div class="spacer"></div>
+      <button id="closeMdModal" class="topbtn">关闭</button>
+    </div>
+    <pre id="mdPreview" class="md-preview"></pre>
+    <div class="md-foot">
+      <button id="copyMdBtn" class="topbtn">复制全部</button>
+      <button id="downloadMdBtn" class="topbtn primary">下载 .md</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="godotModal" class="godot-modal">
+  <div class="godot-card">
+    <div class="godot-head">
+      <div>
+        <div class="godot-title">Godot 场景文件预览 · .tscn</div>
+        <div class="godot-sub">导出的 parent 路径就是 Godot Scene Tree 的父子结构；把文件放进项目后可直接作为场景打开。</div>
+      </div>
+      <div class="spacer"></div>
+      <button id="closeGodotModal" class="topbtn">关闭</button>
+    </div>
+    <div class="godot-preview-wrap">
+      <div class="godot-tree-preview"><h4>GODOT SCENE TREE</h4><div id="godotTreePreview"></div></div>
+      <pre id="godotCodePreview" class="godot-code"></pre>
+    </div>
+    <div id="godotValidationBar" class="godot-validation-bar"></div>
+    <div class="godot-foot">
+      <button id="copyGodotBtn" class="topbtn">复制 .tscn 源码</button>
+      <button id="downloadGodotBtn" class="topbtn primary">下载当前 .tscn</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<div id="helpModal" class="modal-back">
+  <div class="modal">
+    <div class="modal-head"><h2>怎么用</h2><button id="closeHelp" class="topbtn modal-close">关闭</button></div>
+    <div class="modal-body">
+      <p><b>核心操作：</b>左侧点一个 Godot 控件 → 在中间画板按住鼠标拖出矩形 → 松手完成。矩形左上角的紫色小标签是 <b>Godot 节点名</b>，只用于导出和 MCP 建场景，<b>不会作为实际 UI 文本显示</b>。</p>
+      <p>右侧可以改节点名、实际显示文字、位置尺寸、父节点、锚点、预览颜色，以及专门写给 Codex/MCP 的逻辑备注。顶部标签页就是不同 UI 场景，例如“主菜单”“背包”“设置”。每个标签页独立保存一套节点。</p>
+      <p><b>改进操作：</b>支持 8 点缩放、空格/中键拖动画布、Ctrl/⌘+滚轮缩放、连续绘制、场景右键复制/重命名、自动父子层级、Godot 结构验证，以及 Markdown / .tscn 两种导出。</p>
+      <div class="kbdline"><div><kbd>V</kbd> / <kbd>Esc</kbd></div><div>回到选择工具</div></div>
+      <div class="kbdline"><div><kbd>D</kbd></div><div>进入当前控件的斜拉绘制模式</div></div>
+      <div class="kbdline"><div><kbd>Space</kbd> + 拖拽</div><div>平移画布</div></div>
+      <div class="kbdline"><div><kbd>Delete</kbd></div><div>删除选中节点</div></div>
+      <div class="kbdline"><div><kbd>Ctrl/⌘</kbd> + <kbd>D</kbd></div><div>复制选中节点</div></div>
+      <div class="kbdline"><div><kbd>⌘Z</kbd> / <kbd>Ctrl+Z</kbd></div><div>撤销上一步设计操作</div></div>
+      <div class="kbdline"><div><kbd>⇧⌘Z</kbd> / <kbd>Ctrl+Shift+Z</kbd></div><div>重做；Windows 也支持 Ctrl+Y</div></div>
+      <div class="kbdline"><div><kbd>方向键</kbd></div><div>移动 1px；按 Shift 时移动 8px</div></div>
+      <div class="kbdline"><div><kbd>Ctrl/⌘</kbd> + <kbd>S</kbd></div><div>直接导出 Markdown</div></div>
+      <p><b>导出的 .md</b> 里同时包含人类可读的 UI 规格表和机器可读 JSON。你可以直接把它交给 Codex，让 Codex 通过 Godot MCP 创建 Control 场景、节点、Rect、父子关系和文本。</p>
+    </div>
+  </div>
+</div>
+<script>
+const CONTROL_META = {
+  Control:{zh:'普通 UI 根控件 / 基础承载节点',short:'Ctrl'},
+  ColorRect:{zh:'纯色填充背景矩形',short:'BgColor'},
+  Panel:{zh:'基础面板背景',short:'Panel'},
+  NinePatchRect:{zh:'九宫格可拉伸贴图',short:'NinePatch'},
+  TextureRect:{zh:'2D 纹理贴图与立绘容器',short:'Tex'},
+  ReferenceRect:{zh:'辅助调试参考框，不参与正式显示',short:'RefRect'},
+
+  Container:{zh:'自动布局父容器基类',short:'Container'},
+  AspectRatioContainer:{zh:'保持子元素宽高比',short:'Aspect'},
+  BoxContainer:{zh:'水平/垂直线性排列父类',short:'Box'},
+  VBoxContainer:{zh:'垂直排列子控件',short:'VBox'},
+  HBoxContainer:{zh:'水平排列子控件',short:'HBox'},
+  CenterContainer:{zh:'保持子元素居中',short:'Center'},
+  FlowContainer:{zh:'流式自动换行排列',short:'Flow'},
+  HFlowContainer:{zh:'水平流式换行容器',short:'HFlow'},
+  VFlowContainer:{zh:'垂直流式换列容器',short:'VFlow'},
+  FoldableContainer:{zh:'可折叠/展开内容区域',short:'Fold'},
+  GridContainer:{zh:'多行多列网格布局',short:'Grid'},
+  SplitContainer:{zh:'带拖拽分隔的双区域容器',short:'Split'},
+  HSplitContainer:{zh:'左右分栏可拖拽',short:'HSplit'},
+  VSplitContainer:{zh:'上下分栏可拖拽',short:'VSplit'},
+  MarginContainer:{zh:'四周留白边距容器',short:'Margin'},
+  PanelContainer:{zh:'带自定背景样式的容器',short:'PanelBox'},
+  ScrollContainer:{zh:'支持横纵滚动的视口容器',short:'Scroll'},
+  SubViewportContainer:{zh:'承载子视口画面的容器',short:'SubViewport'},
+  TabContainer:{zh:'多页面切换选项容器',short:'Tabs'},
+
+  Label:{zh:'普通静态文本标签',short:'Lbl'},
+  RichTextLabel:{zh:'支持 BBCode 的富文本标签',short:'RTL'},
+  LineEdit:{zh:'单行文本输入框',short:'Input'},
+  TextEdit:{zh:'多行文本编辑区',short:'Text'},
+  CodeEdit:{zh:'面向代码的文本编辑器',short:'Code'},
+
+  Button:{zh:'标准基础点击按钮',short:'Btn'},
+  CheckButton:{zh:'滑动开关样式按钮',short:'Toggle'},
+  CheckBox:{zh:'标准复选框勾选按钮',short:'Chk'},
+  LinkButton:{zh:'超链接样式文字按钮',short:'Link'},
+  MenuButton:{zh:'点击弹出菜单的按钮',short:'MenuBtn'},
+  OptionButton:{zh:'单项下拉选择按钮',short:'OptBtn'},
+  TextureButton:{zh:'基于贴图纹理的按钮',short:'TexBtn'},
+  BaseButton:{zh:'按钮交互基类 / 抽象按钮',short:'BaseBtn'},
+
+  ItemList:{zh:'简单列表与图标列表控件',short:'List'},
+  Tree:{zh:'树形层级列表控件',short:'Tree'},
+  TabBar:{zh:'仅标签栏头部控件',short:'TabBar'},
+  MenuBar:{zh:'顶部菜单栏控件',short:'MenuBar'},
+  GraphEdit:{zh:'节点图编辑画布',short:'Graph'},
+  GraphElement:{zh:'图编辑元素基类',short:'GElement'},
+  GraphFrame:{zh:'图中分组框/框架',short:'GFrame'},
+  GraphNode:{zh:'可拖拽图节点块',short:'GNode'},
+
+  Range:{zh:'数值范围控件基类',short:'Range'},
+  HSlider:{zh:'水平滑杆',short:'HSlider'},
+  VSlider:{zh:'垂直滑杆',short:'VSlider'},
+  HScrollBar:{zh:'水平滚动条控件',short:'HScroll'},
+  VScrollBar:{zh:'垂直滚动条控件',short:'VScroll'},
+  ProgressBar:{zh:'进度条 / 血条 / 经验条',short:'Progress'},
+  SpinBox:{zh:'带步进按钮的数字输入',short:'Spin'},
+  Separator:{zh:'分隔线基类',short:'Sep'},
+  HSeparator:{zh:'水平分隔线',short:'HSep'},
+  VSeparator:{zh:'垂直分隔线',short:'VSep'},
+
+  VideoStreamPlayer:{zh:'视频播放控件',short:'Video'},
+  VirtualJoystick:{zh:'虚拟摇杆输入控件',short:'Joystick'}
+};
+function metaOf(type){return CONTROL_META[type] || {zh:'Godot UI 控件',short:type}}
+
+const PALETTE_GROUPS = [
+  {name:'基础控件 (BASIC)',items:[
+    ['Control','control'],['ColorRect','color'],['Panel','panel'],['NinePatchRect','panel'],['TextureRect','texture'],['ReferenceRect','control']
+  ]},
+  {name:'布局容器 (CONTAINERS)',items:[
+    ['Container','container'],['AspectRatioContainer','container'],['BoxContainer','container'],['VBoxContainer','container'],['HBoxContainer','container'],['CenterContainer','container'],['FlowContainer','container'],['HFlowContainer','container'],['VFlowContainer','container'],['FoldableContainer','container'],['GridContainer','container'],['SplitContainer','container'],['HSplitContainer','container'],['VSplitContainer','container'],['MarginContainer','container'],['PanelContainer','container'],['ScrollContainer','container'],['SubViewportContainer','container'],['TabContainer','container']
+  ]},
+  {name:'文本与输入 (TEXT & INPUT)',items:[
+    ['Label','text'],['RichTextLabel','text'],['LineEdit','input'],['TextEdit','input'],['CodeEdit','input']
+  ]},
+  {name:'按钮交互 (BUTTONS)',items:[
+    ['Button','button'],['CheckButton','button'],['CheckBox','button'],['LinkButton','button'],['MenuButton','button'],['OptionButton','button'],['TextureButton','button'],['BaseButton','button']
+  ]},
+  {name:'列表与数据 (LISTS & DATA)',items:[
+    ['ItemList','panel'],['Tree','panel'],['TabBar','panel'],['MenuBar','panel'],['GraphEdit','panel'],['GraphElement','panel'],['GraphFrame','panel'],['GraphNode','panel']
+  ]},
+  {name:'范围与分隔 (RANGE & SEPARATORS)',items:[
+    ['Range','control'],['HSlider','control'],['VSlider','control'],['HScrollBar','control'],['VScrollBar','control'],['ProgressBar','control'],['SpinBox','input'],['Separator','separator'],['HSeparator','separator'],['VSeparator','separator']
+  ]},
+  {name:'媒体与其它 (MEDIA & MISC)',items:[
+    ['VideoStreamPlayer','panel'],['VirtualJoystick','control']
+  ]}
+];
+
+const containerTypes = new Set(['Control','Container','AspectRatioContainer','BoxContainer','VBoxContainer','HBoxContainer','CenterContainer','FlowContainer','HFlowContainer','VFlowContainer','FoldableContainer','GridContainer','SplitContainer','HSplitContainer','VSplitContainer','MarginContainer','PanelContainer','ScrollContainer','SubViewportContainer','TabContainer','Panel','NinePatchRect','GraphEdit','GraphElement','GraphFrame','GraphNode']);
+const displayTextTypes = new Set(['Label','RichTextLabel','Button','CheckButton','CheckBox','LinkButton','MenuButton','OptionButton','BaseButton','LineEdit','TextEdit','CodeEdit','SpinBox','TabBar','MenuBar']);
+
+const graphElementTypes = new Set(['GraphElement','GraphFrame','GraphNode']);
+const abstractControlTypes = new Set(['BaseButton','Range','Separator']);
+const splitTypes = new Set(['SplitContainer','HSplitContainer','VSplitContainer']);
+const autoLayoutTypes = new Set(['Container','AspectRatioContainer','BoxContainer','VBoxContainer','HBoxContainer','CenterContainer','FlowContainer','HFlowContainer','VFlowContainer','FoldableContainer','GridContainer','SplitContainer','HSplitContainer','VSplitContainer','MarginContainer','PanelContainer','ScrollContainer','TabContainer']);
+
+// 设计器使用“严格 Godot UI 规则”：阻止会导致明显无效/错误语义的父子关系，
+// 对 Container 自动布局等情况给警告，但不阻止。
+function validateParentChild(parent, child, screen=currentScreen()){
+  if(!parent) return {ok:true,level:'ok',message:'根节点 Control 下'};
+  if(!child) return {ok:false,level:'error',message:'子节点不存在'};
+  if(parent.id===child.id) return {ok:false,level:'error',message:'节点不能成为自己的父节点'};
+  if(isDescendant(parent.id,child.id)) return {ok:false,level:'error',message:'会形成循环父子关系'};
+
+  // GraphElement/GraphNode/GraphFrame 的用途是 GraphEdit 图元素。
+  if(graphElementTypes.has(child.type) && parent.type!=='GraphEdit'){
+    return {ok:false,level:'error',message:`${child.type} 必须作为 GraphEdit 的直接子节点`};
+  }
+  if(parent.type==='GraphEdit' && !graphElementTypes.has(child.type)){
+    return {ok:false,level:'error',message:'GraphEdit 直接子节点应为 GraphElement / GraphNode / GraphFrame'};
+  }
+
+  // SubViewportContainer 用来显示 SubViewport；本设计器当前没有 SubViewport 节点类型。
+  if(parent.type==='SubViewportContainer'){
+    return {ok:false,level:'error',message:'SubViewportContainer 应包含 SubViewport；普通 Control 不应直接放入其中'};
+  }
+
+  // H/V Split 在 Godot 中只接受两个 Control 子节点。
+  if(splitTypes.has(parent.type)){
+    const siblings=screen.nodes.filter(n=>n.parentId===parent.id && n.id!==child.id);
+    if(siblings.length>=2) return {ok:false,level:'error',message:`${parent.type} 最多只能有 2 个直接子控件`};
+  }
+
+  if(parent.type==='TabContainer'){
+    return {ok:true,level:'warn',message:'TabContainer 会把每个直接 Control 子节点变成一个 Tab，仅显示当前页'};
+  }
+  if(autoLayoutTypes.has(parent.type)){
+    return {ok:true,level:'warn',message:`${parent.type} 会自动布局子 Control，手工 Rect 可能被覆盖`};
+  }
+  return {ok:true,level:'ok',message:`可作为 ${parent.type} 的子节点`};
+}
+
+function validateNodeStructure(node, screen=currentScreen()){
+  const issues=[];
+  if(abstractControlTypes.has(node.type)) issues.push({level:'error',message:`${node.type} 是 Godot 抽象基类，不能作为可实例化场景节点；请选择具体子类`});
+  if(node.parentId){
+    const p=screen.nodes.find(x=>x.id===node.parentId);
+    if(!p) issues.push({level:'error',message:'父节点引用已丢失'});
+    else {
+      const v=validateParentChild(p,node,screen);
+      if(v.level!=='ok') issues.push(v);
+      if(!(node.x>=p.x && node.y>=p.y && node.x+node.w<=p.x+p.w && node.y+node.h<=p.y+p.h)){
+        issues.push({level:'warn',message:'节点 Rect 已超出父节点矩形范围（Godot 允许，但请确认是否符合设计）'});
+      }
+    }
+  } else if(graphElementTypes.has(node.type)){
+    issues.push({level:'error',message:`${node.type} 不能放在根 Control 下，必须位于 GraphEdit 下`});
+  }
+  return issues;
+}
+function validateScene(screen=currentScreen()){
+  const issues=[];
+  screen.nodes.forEach(n=>validateNodeStructure(n,screen).forEach(i=>issues.push({...i,nodeId:n.id,nodeName:n.name})));
+  return issues;
+}
+function worstValidationLevel(issues){return issues.some(i=>i.level==='error')?'error':issues.some(i=>i.level==='warn')?'warn':'ok'}
+
+const defaultSizes = {
+  Label:[150,32], RichTextLabel:[240,110], Button:[150,44], CheckButton:[160,40], CheckBox:[150,34], LinkButton:[140,32], MenuButton:[150,40], OptionButton:[170,40], BaseButton:[150,42],
+  LineEdit:[220,40], TextEdit:[260,120], CodeEdit:[300,150], ColorRect:[180,100], Panel:[260,180], NinePatchRect:[260,180], TextureRect:[220,140], ReferenceRect:[220,140],
+  VBoxContainer:[260,220], HBoxContainer:[320,130], GridContainer:[320,240], ScrollContainer:[300,220], TabContainer:[340,240], Control:[260,180], Container:[260,180]
+}; 
+
+function defaultColor(type){
+  if(type==='ColorRect') return '#28313d';
+  if(type==='Panel'||type==='PanelContainer'||type==='NinePatchRect'||type.includes('Container')) return '#dfe5eb';
+  if(type==='Label'||type==='RichTextLabel') return '#27313c';
+  if(type==='ProgressBar') return '#4f9fe8';
+  if(type.includes('Button')||['CheckBox','CheckButton','MenuButton','OptionButton','LinkButton'].includes(type)) return '#dfe7ef';
+  return '#dfe5eb';
+}
+function allControlTypes(){return [...new Set(PALETTE_GROUPS.flatMap(g=>g.items.map(i=>i[0])))];}
+function sceneFileName(s){return `${sanitizeFileName(s?.name||'Scene')}.tscn`;}
+
+function uid(prefix='id'){return prefix+'_'+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4)}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function snap(v){return state.snap ? Math.round(v/state.gridSize)*state.gridSize : Math.round(v)}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(window.__toast);window.__toast=setTimeout(()=>el.classList.remove('show'),1800)}
+
+const initial = {
+  version:2, projectName:'Godot UI Project', width:1152, height:648, zoom:.8, grid:true, snap:true, gridSize:8,
+  activeScreenId:null, selectedTool:'select', lastDrawType:'Button', continuousDraw:false, selectedNodeId:null, activeSidebarTab:'inspector', looseLayout:false,
+  screens:[{id:uid('screen'),name:'主界面',nodes:[]}]
+};
+initial.activeScreenId=initial.screens[0].id;
+let state = loadLocal() || JSON.parse(JSON.stringify(initial));
+normalizeState();
+
+function normalizeState(){
+  state.version=2;
+  state.projectName=state.projectName||'Godot UI Project';
+  state.width=Number(state.width)||1152; state.height=Number(state.height)||648;
+  state.zoom=Number(state.zoom)||.8; state.grid=state.grid!==false; state.snap=state.snap!==false; state.gridSize=Number(state.gridSize)||8;
+  state.selectedTool='select'; state.lastDrawType=state.lastDrawType||'Button'; state.continuousDraw=!!state.continuousDraw;
+  state.selectedNodeId=null; state.activeSidebarTab=state.activeSidebarTab||'inspector'; state.looseLayout=!!state.looseLayout;
+  if(!Array.isArray(state.screens)||!state.screens.length) state.screens=JSON.parse(JSON.stringify(initial.screens));
+  if(!state.activeScreenId||!state.screens.some(s=>s.id===state.activeScreenId)) state.activeScreenId=state.screens[0].id;
+  state.screens.forEach((s,si)=>{
+    s.id=s.id||uid('screen'); s.name=s.name||`界面 ${si+1}`; s.nodes=Array.isArray(s.nodes)?s.nodes:[];
+    // 背景参考图是临时编辑辅助：不从项目/本地存档恢复。
+    s.background={assetKey:null,name:'',opacity:.55,fit:'contain',visible:true,x:0,y:0,w:0,h:0,editing:false,naturalW:0,naturalH:0};
+    s.nodes.forEach((n,i)=>{
+      n.id=n.id||uid('node'); n.type=n.type||'Control'; n.name=n.name||`${n.type}${i+1}`;
+      n.x=Number(n.x)||0; n.y=Number(n.y)||0; n.w=Math.max(8,Number(n.w)||120); n.h=Math.max(8,Number(n.h)||40);
+      n.text=n.text||''; n.note=n.note||''; n.mcpNote=n.mcpNote||''; n.parentId=n.parentId||null;
+      n.z=Number.isFinite(Number(n.z))?Number(n.z):i; n.anchor=n.anchor||'custom'; n.color=n.color||defaultColor(n.type);
+    });
+  });
+}
+
+// ===== Undo / Redo 历史系统 =====
+// 设计内容级历史：节点、层级、属性、场景、画板尺寸等可撤销；缩放/平移/工具选择不进入历史。
+const HISTORY_LIMIT=120;
+let undoStack=[],redoStack=[],historyRestoring=false;
+function historySnapshot(){
+  const s=JSON.parse(JSON.stringify(state));
+  // 工具状态属于编辑器视图，不应该因为撤销而突然切换绘制模式。
+  s.selectedTool='select';s.selectedNodeId=null;
+  return JSON.stringify(s);
+}
+function updateHistoryButtons(){
+  const u=document.getElementById('undoBtn'),r=document.getElementById('redoBtn');
+  if(u){u.disabled=!undoStack.length;u.title=`撤销：Mac ⌘Z / Windows Ctrl+Z${undoStack.length?` · ${undoStack.length} 步可撤销`:''}`}
+  if(r){r.disabled=!redoStack.length;r.title=`重做：Mac ⇧⌘Z / Windows Ctrl+Shift+Z / Ctrl+Y${redoStack.length?` · ${redoStack.length} 步可重做`:''}`}
+}
+function pushHistorySnapshot(snapshot){
+  if(historyRestoring||!snapshot)return;
+  if(undoStack[undoStack.length-1]!==snapshot){undoStack.push(snapshot);if(undoStack.length>HISTORY_LIMIT)undoStack.shift()}
+  redoStack=[];updateHistoryButtons();
+}
+function pushHistory(){pushHistorySnapshot(historySnapshot())}
+function restoreHistorySnapshot(snapshot){
+  if(!snapshot)return;
+  historyRestoring=true;
+  try{
+    const restored=JSON.parse(snapshot);
+    // 保持撤销后的编辑器处于安全的选择模式。
+    state=restored;state.selectedTool='select';state.selectedNodeId=null;
+    if(!state.activeSidebarTab)state.activeSidebarTab='inspector';
+    renderAll(false);saveLocal();
+  }finally{historyRestoring=false;updateHistoryButtons()}
+}
+function undo(){
+  if(!undoStack.length){toast('没有可撤销的操作');return}
+  redoStack.push(historySnapshot());
+  restoreHistorySnapshot(undoStack.pop());
+  toast('↶ 已撤销');
+}
+function redo(){
+  if(!redoStack.length){toast('没有可重做的操作');return}
+  undoStack.push(historySnapshot());
+  if(undoStack.length>HISTORY_LIMIT)undoStack.shift();
+  restoreHistorySnapshot(redoStack.pop());
+  toast('↷ 已重做');
+}
+// 文本/属性编辑：在获得焦点时只记录一次“编辑前”的状态，避免每打一个字都占一层撤销。
+function armHistoryOnFocus(el){
+  if(!el)return;
+  el.addEventListener('focus',()=>{if(!el.dataset.historyArmed){pushHistory();el.dataset.historyArmed='1'}});
+  const release=()=>{delete el.dataset.historyArmed};
+  el.addEventListener('blur',release);el.addEventListener('change',release);
+}
+
+// ===== 背景参考图：仅当前页面会话使用 =====
+// 不写入 localStorage / IndexedDB / 项目 JSON / Markdown / .tscn。
+// 目的只是让用户在画 UI 时把截图垫在下面对照位置。
+const backgroundAssets=new Map();
+function makeBgAssetKey(){return 'bg_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,9)}
+function fileToDataUrl(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result));r.onerror=()=>reject(r.error);r.readAsDataURL(file)})}
+function imageSizeFromDataUrl(src){return new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve({w:im.naturalWidth||1,h:im.naturalHeight||1});im.onerror=reject;im.src=src})}
+async function putBgAsset(key,dataUrl){backgroundAssets.set(key,dataUrl)}
+async function getBgAsset(key){return key?backgroundAssets.get(key)||null:null}
+async function hydrateBackgroundAssets(){renderBoard();renderBackgroundPanel()}
+function defaultBackgroundRect(iw,ih){
+  const maxW=state.width*.9,maxH=state.height*.9;
+  const scale=Math.min(maxW/Math.max(1,iw),maxH/Math.max(1,ih),1);
+  const w=Math.max(40,Math.round(iw*scale)),h=Math.max(40,Math.round(ih*scale));
+  return {x:Math.round((state.width-w)/2),y:Math.round((state.height-h)/2),w,h};
+}
+async function setBackgroundFromFile(file){
+  if(!file||!String(file.type||'').startsWith('image/')){toast('请选择图片文件');return}
+  const s=currentScreen();if(!s)return;
+  pushHistory();
+  try{
+    const dataUrl=await fileToDataUrl(file);const size=await imageSizeFromDataUrl(dataUrl);const key=makeBgAssetKey();await putBgAsset(key,dataUrl);
+    const r=defaultBackgroundRect(size.w,size.h);
+    s.background={assetKey:key,name:file.name||'clipboard-image.png',opacity:s.background?.opacity??.55,fit:s.background?.fit||'contain',visible:true,x:r.x,y:r.y,w:r.w,h:r.h,editing:true,naturalW:size.w,naturalH:size.h};
+    state.selectedTool='select';state.selectedNodeId=null;
+    renderAll();toast(`已临时设为背景：拖动图片移动，拖四角缩放`)
+  }catch(e){toast('读取背景图片失败')}
+}
+function renderBackgroundPanel(){
+  const s=currentScreen(),bg=s?.background||{};
+  const name=document.getElementById('bgFileName'),vis=document.getElementById('bgVisibleToggle'),op=document.getElementById('bgOpacityRange'),fit=document.getElementById('bgFitSelect'),clear=document.getElementById('bgClearBtn'),edit=document.getElementById('bgEditBtn');
+  if(name){name.textContent=bg.assetKey?(bg.name||'背景图片'):'当前界面还没有背景图';name.classList.toggle('empty',!bg.assetKey)}
+  if(vis){vis.checked=bg.visible!==false;vis.disabled=!bg.assetKey}
+  if(op){op.value=Math.round((bg.opacity??.55)*100);op.disabled=!bg.assetKey}
+  if(fit){fit.value=bg.fit||'contain';fit.disabled=!bg.assetKey}
+  if(clear)clear.disabled=!bg.assetKey;
+  if(edit){edit.disabled=!bg.assetKey;edit.textContent=bg.editing?'完成摆放':'编辑位置 / 大小';edit.classList.toggle('primary',!!bg.editing)}
+}
+function stopBackgroundEditing(){const s=currentScreen();if(s?.background?.editing){s.background.editing=false;renderAll(false)}}
+
+function currentScreen(){return state.screens.find(s=>s.id===state.activeScreenId) || state.screens[0]}
+function nodeById(id){return currentScreen().nodes.find(n=>n.id===id)}
+function saveLocal(){
+  const safe=JSON.parse(JSON.stringify(state));safe.selectedTool='select';safe.selectedNodeId=null;
+  // 背景图只用于当前编辑，不保存任何图片或背景引用。
+  safe.screens?.forEach(s=>{delete s.background});
+  localStorage.setItem('godot_ui_blueprint_v2',JSON.stringify(safe));
+}
+function loadLocal(){try{
+  const x=localStorage.getItem('godot_ui_blueprint_v2') || localStorage.getItem('godot_ui_blueprint_v1');
+  return x?JSON.parse(x):null;
+}catch{return null}}
+
+// Godot Control 的“添加子节点”面板采用继承树，而不是按用途分类。
+// 这里只改变控件库的浏览/排版方式，不改变原有绘制、导出和验证逻辑。
+const GODOT_CONTROL_TREE = {
+  type:'Control', children:[
+    {type:'Container', children:[
+      {type:'AspectRatioContainer'},
+      {type:'BoxContainer', children:[{type:'VBoxContainer'},{type:'HBoxContainer'}]},
+      {type:'CenterContainer'},
+      {type:'FlowContainer', children:[{type:'HFlowContainer'},{type:'VFlowContainer'}]},
+      {type:'FoldableContainer'},
+      {type:'GraphElement', children:[{type:'GraphFrame'},{type:'GraphNode'}]},
+      {type:'GridContainer'},
+      {type:'SplitContainer', children:[{type:'HSplitContainer'},{type:'VSplitContainer'}]},
+      {type:'MarginContainer'},
+      {type:'PanelContainer'},
+      {type:'ScrollContainer'},
+      {type:'SubViewportContainer'},
+      {type:'TabContainer'}
+    ]},
+    {type:'BaseButton', children:[
+      {type:'Button', children:[{type:'CheckBox'},{type:'CheckButton'},{type:'MenuButton'},{type:'OptionButton'}]},
+      {type:'LinkButton'},
+      {type:'TextureButton'}
+    ]},
+    {type:'TextEdit', children:[{type:'CodeEdit'}]},
+    {type:'ColorRect'},
+    {type:'GraphEdit'},
+    {type:'Range', children:[{type:'ProgressBar'},{type:'SpinBox'},{type:'HSlider'},{type:'VSlider'},{type:'HScrollBar'},{type:'VScrollBar'}]},
+    {type:'Separator', children:[{type:'HSeparator'},{type:'VSeparator'}]},
+    {type:'ItemList'},
+    {type:'Label'},
+    {type:'LineEdit'},
+    {type:'MenuBar'},
+    {type:'NinePatchRect'},
+    {type:'Panel'},
+    {type:'ReferenceRect'},
+    {type:'RichTextLabel'},
+    {type:'TabBar'},
+    {type:'TextureRect'},
+    {type:'Tree'},
+    {type:'VideoStreamPlayer'},
+    {type:'VirtualJoystick'}
+  ]
+};
+
+// 左侧继承树首次打开时全部折叠。
+// 用户手动点三角展开；搜索时仍会临时自动展开匹配项的祖先。
+const paletteExpanded = new Set();
+
+function paletteNodeMatches(node,q){
+  const meta=metaOf(node.type);
+  const self=[node.type,meta.zh,meta.short].some(v=>String(v||'').toLowerCase().includes(q));
+  const child=(node.children||[]).some(c=>paletteNodeMatches(c,q));
+  return self||child;
+}
+function paletteSelfMatches(node,q){
+  const meta=metaOf(node.type);
+  return [node.type,meta.zh,meta.short].some(v=>String(v||'').toLowerCase().includes(q));
+}
+function renderPalette(filter=''){
+  const root=document.getElementById('palette');root.innerHTML='';
+  const q=filter.trim().toLowerCase();
+  const tree=document.createElement('div');tree.className='godot-palette-tree';root.appendChild(tree);
+
+  let shown=0;
+  const drawNode=(node,depth)=>{
+    if(q && !paletteNodeMatches(node,q)) return;
+    const children=node.children||[];
+    const hasChildren=children.length>0;
+    // 搜索时自动展开所有包含匹配项的祖先；非搜索时遵循用户的折叠状态。
+    const open=q ? true : paletteExpanded.has(node.type);
+    const meta=metaOf(node.type);
+    const row=document.createElement('div');
+    row.className='palette-tree-row'+(state.selectedTool===node.type?' active':'')+(abstractControlTypes.has(node.type)?' abstract':'');
+    row.style.setProperty('--depth',depth);
+    row.dataset.type=node.type;
+    row.title=`${node.type}：${meta.zh}`;
+
+    const arrow=hasChildren
+      ? `<span class="palette-disclosure has-children ${open?'open':''}" title="${open?'折叠':'展开'}"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 1.7 6.5 5 3 8.3"/></svg></span>`
+      : `<span class="palette-disclosure placeholder"></span>`;
+    row.innerHTML=`${arrow}<span class="palette-tree-icon">${iconGlyph(node.type)}</span><span class="palette-tree-name">${esc(node.type)}</span><span class="palette-tree-desc">${esc(meta.zh)}</span>`;
+
+    const disclosure=row.querySelector('.palette-disclosure.has-children');
+    if(disclosure) disclosure.addEventListener('click',e=>{
+      e.stopPropagation();
+      if(paletteExpanded.has(node.type)) paletteExpanded.delete(node.type); else paletteExpanded.add(node.type);
+      renderPalette(document.getElementById('paletteSearch').value||'');
+    });
+    row.addEventListener('click',()=>{
+      state.lastDrawType=node.type;state.selectedTool=node.type;state.selectedNodeId=null;
+      renderAll(false);toast(`已选择 ${node.type}：在画板上拖出矩形`);
+    });
+    tree.appendChild(row);shown++;
+
+    if(open) children.forEach(c=>drawNode(c,depth+1));
+  };
+  drawNode(GODOT_CONTROL_TREE,0);
+  if(!shown) tree.innerHTML='<div class="palette-tree-empty">没有找到匹配的 Godot Control</div>';
+}
+const GODOT_ICON_PATHS = {
+  Control:'<circle cx="8" cy="2.2" r="1.3"/><rect x="2.5" y="4" width="11" height="9.5" rx="1.4" stroke-dasharray="3 2.2"/>',
+  Panel:'<rect x="2.5" y="3.5" width="11" height="9" rx="1.2" fill="currentColor" fill-opacity=".28"/>',
+  PanelContainer:'<rect x="2.5" y="3.5" width="11" height="9" rx="1.2" fill="currentColor" fill-opacity=".22"/><rect x="4.8" y="5.8" width="6.4" height="4.4" rx=".8" stroke-dasharray="2 1.6"/>',
+  ColorRect:'<rect x="2.5" y="3.5" width="11" height="9" fill="#5a8fe0"/><path d="M2.5 12.5 6 9l2.2 2.2L11 8l2.5 3" fill="#86d993" stroke="none"/><circle cx="5" cy="6" r=".9" fill="#e5c07b" stroke="none"/>',
+  TextureRect:'<rect x="2.5" y="3.5" width="11" height="9" rx="1"/><circle cx="6" cy="7" r="1.2"/><path d="M3.5 11.5l3-3 2 2 1.6-1.6 2.4 2.6"/>',
+  NinePatchRect:'<rect x="2.5" y="3.5" width="11" height="9" rx="1"/><path d="M6 3.5v9M10 3.5v9M2.5 6.5h11M2.5 9.5h11" stroke-opacity=".55"/>',
+  ReferenceRect:'<rect x="3" y="4" width="10" height="8" rx="1" stroke-dasharray="2.6 2"/><path d="M3 6.5H1.8M3 9.5H1.8M13 6.5h1.2M13 9.5h1.2M6.5 4V2.8M9.5 4V2.8M6.5 12v1.2M9.5 12v1.2"/>',
+  Container:'<rect x="2.4" y="3.3" width="11.2" height="9.4" rx="1" stroke-dasharray="2.2 1.8"/><path d="M5 6.2h6M5 8h6M5 9.8h6" stroke-opacity=".72"/>',
+  AspectRatioContainer:'<rect x="2.5" y="3.5" width="11" height="9" rx="1" stroke-dasharray="2.5 2"/><path d="M5 6.2 3.6 7.6 5 9M11 6.2l1.4 1.4L11 9M6.2 5l1.4-1.4L9 5M6.2 11l1.4 1.4L9 11"/>',
+  BoxContainer:'<path d="M3.2 4.2 6.3 2.5l6.5 3.8-3.1 1.7z"/><path d="M3.2 6.6 6.3 4.9l6.5 3.8-3.1 1.7z"/><path d="M3.2 9 6.3 7.3l6.5 3.8-3.1 1.7z" fill="currentColor" fill-opacity=".15"/>',
+  VBoxContainer:'<rect x="2.5" y="2.8" width="11" height="10.4" rx="1"/><path d="M2.5 6.3h11M2.5 9.8h11"/>',
+  HBoxContainer:'<rect x="2.2" y="3.5" width="11.6" height="9" rx="1"/><path d="M6 3.5v9M10 3.5v9"/>',
+  CenterContainer:'<rect x="2.2" y="3.2" width="11.6" height="9.6" rx="1"/><rect x="6" y="6.4" width="4" height="3.2" rx=".7" fill="currentColor" fill-opacity=".3"/>',
+  FlowContainer:'<path d="M8 2.8l2.4 2.4L8 7.6 5.6 5.2 8 2.8z"/><path d="M12 7.2l1.2 1.2L12 9.6l-1.2-1.2L12 7.2zM8 8.8l1.2 1.2L8 11.2 6.8 10 8 8.8zM4 7.2l1.2 1.2L4 9.6 2.8 8.4 4 7.2z" fill="currentColor" fill-opacity=".85" stroke="none"/>',
+  HFlowContainer:'<rect x="2.2" y="3.2" width="11.6" height="9.6" rx="1"/><path d="M4.5 5.6h3.4v2.4H4.5zM9 5.6h2.8M9 8.6h2.8M4.5 10.6h7.3" stroke-opacity=".75"/>',
+  VFlowContainer:'<rect x="2.2" y="3.2" width="11.6" height="9.6" rx="1"/><path d="M4.4 4.8v3h3v-3zM4.4 9.2h6.8M9.2 9.2v2.2" stroke-opacity=".75"/>',
+  FoldableContainer:'<rect x="2.2" y="3.2" width="11.6" height="9.6" rx="1"/><path d="M2.2 6.6h11.6"/><path d="M4.6 4.9l1 1-1 1"/>',
+  GridContainer:'<rect x="2.2" y="3.2" width="11.6" height="9.6" rx="1"/><path d="M8 3.2v9.6M2.2 8h11.6"/>',
+  SplitContainer:'<path d="M8 2.8l4.8 4.8L8 12.4 3.2 7.6 8 2.8z"/><path d="M8 4.1v7" stroke-width="1.8"/><path d="M6.1 7.6 8 5.7l1.9 1.9M6.1 7.6 8 9.5l1.9-1.9" stroke-opacity=".75"/>',
+  HSplitContainer:'<rect x="2.2" y="3.2" width="11.6" height="9.6" rx="1"/><path d="M7.4 3.2v9.6" stroke-width="2.2" stroke-opacity=".8"/><path d="M6 6.6l1.4 1.4L6 9.4M8.8 6.6l-1.4 1.4 1.4 1.4"/>',
+  VSplitContainer:'<rect x="2.2" y="3.2" width="11.6" height="9.6" rx="1"/><path d="M2.2 8h11.6" stroke-width="2.2" stroke-opacity=".8"/><path d="M5.6 6.6 7 5.2l1.4 1.4M5.6 9.4 7 10.8l1.4-1.4"/>',
+  MarginContainer:'<rect x="2.2" y="3.2" width="11.6" height="9.6" rx="1"/><rect x="5" y="5.6" width="6" height="4.8" rx=".7" stroke-dasharray="2 1.5"/>',
+  ScrollContainer:'<rect x="2.2" y="3.2" width="11.6" height="9.6" rx="1"/><path d="M11.6 4.4v7.2" stroke-width="1.8"/><path d="M10.8 6.2l.8-.9.8.9M10.8 9l.8.9.8-.9"/>',
+  SubViewportContainer:'<rect x="2.2" y="3.2" width="11.6" height="9.6" rx="1"/><rect x="4.6" y="5.2" width="6.8" height="5.6" rx=".6" fill="currentColor" fill-opacity=".18"/>',
+  TabContainer:'<path d="M2.5 6v6.8h11V6" /><path d="M2.5 6V4.6h3V6M5.5 6V4.6h3V6M8.5 6V4.6h3V6"/>',
+  BaseButton:'<rect x="2.2" y="4" width="11.6" height="8" rx="2" fill="currentColor" fill-opacity=".2"/><path d="M4.6 8h6.8" stroke-opacity=".72"/>',
+  Button:'<rect x="2.2" y="4" width="11.6" height="8" rx="2" fill="currentColor" fill-opacity=".22"/><path d="M5.5 8h5" stroke-opacity=".7"/>',
+  CheckBox:'<rect x="2.6" y="4" width="6" height="6" rx="1"/><path d="M4 7l1 1 2.2-2.4"/><path d="M10.5 7h3M10.5 10h3"/>',
+  CheckButton:'<rect x="2.6" y="5.6" width="7" height="3.4" rx="1.7"/><circle cx="8.2" cy="7.3" r="1.35" fill="currentColor"/><path d="M11.5 7.3h2.6"/>',
+  OptionButton:'<rect x="2.2" y="4" width="11.6" height="8" rx="1.5" fill="currentColor" fill-opacity=".2"/><path d="M6.6 7l1.4 1.5L9.4 7"/>',
+  MenuButton:'<rect x="2.2" y="4" width="11.6" height="8" rx="1.5" fill="currentColor" fill-opacity=".2"/><path d="M5 7h6M5 9.2h6M5 4.9h6" stroke-width="1.1"/>',
+  LinkButton:'<path d="M4 10.5h3.5c1.6 0 2.6-1 2.6-2.3S9.1 6 7.5 6H6.4C4.9 6 4 6.9 4 8.2"/><path d="M12 10.5H8.5c-1.6 0-2.6-1-2.6-2.3S6.9 6 8.5 6h1.1c1.5 0 2.4.9 2.4 2.2"/>',
+  TextureButton:'<rect x="2.8" y="3.6" width="10.4" height="8.8" rx="1"/><circle cx="6.2" cy="7" r="1.1"/><path d="M3.8 11.4l2.8-2.8 1.9 1.9 1.5-1.5 2.3 2.4"/>',
+  Label:'<path d="M2.8 5h7.5M2.8 8h10.4M2.8 11h5.5"/>',
+  RichTextLabel:'<path d="M2.8 5h5M2.8 8h10.4M2.8 11h8" stroke-width="1.7"/><path d="M7.8 5h2.5" stroke-width="1.1" stroke-opacity=".6"/>',
+  LineEdit:'<rect x="2.5" y="4.5" width="11" height="7" rx="1"/><path d="M5 8h5.5M11.4 6.4v3.2"/>',
+  TextEdit:'<rect x="2.5" y="3.4" width="11" height="9.2" rx="1"/><path d="M5 6h6M5 8.6h6M5 11h3.5" stroke-width="1.1"/>',
+  CodeEdit:'<rect x="2.5" y="3.4" width="11" height="9.2" rx="1"/><path d="M6 6l-1.3 1.3L6 8.6M10 6l1.3 1.3L10 8.6M8.4 5.4l-1 5.2"/>',
+  ItemList:'<rect x="3" y="3" width="10" height="10" rx="1"/><path d="M5.2 6h5.6M5.2 8.8h5.6M5.2 11.4h3.6" stroke-width="1.1"/><circle cx="4" cy="6" r=".7" fill="currentColor"/><circle cx="4" cy="8.8" r=".7" fill="currentColor"/><circle cx="4" cy="11.4" r=".7" fill="currentColor"/>',
+  Tree:'<path d="M4 4v9M4 7h3M7 7v3M4 10h6" /><path d="M8 6.4h4M8 9.4h4M8 12.4h2.5" stroke-width="1.1"/>',
+  TabBar:'<path d="M3 12.5h10"/><path d="M4 12.5V8.4h3.4v4.1M7.4 12.5V9.4h3.4v3.1M10.8 12.5V10.4h2v2.1"/>',
+  MenuBar:'<rect x="2.2" y="4.5" width="11.6" height="7" rx="1"/><path d="M4.6 8h2M8 8h2M11 8h1.4" stroke-width="1.2"/>',
+  GraphEdit:'<rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M2 6h12M2 9.5h12M6 2.5v11M10 2.5v11" stroke-opacity=".35"/><rect x="6.6" y="6.6" width="4.6" height="3.4" rx=".6" fill="currentColor" fill-opacity=".3"/>',
+  GraphElement:'<circle cx="8" cy="8" r="4.7"/><circle cx="8" cy="8" r="1.6" fill="currentColor" stroke="none"/>',
+  GraphFrame:'<rect x="2.6" y="3.4" width="10.8" height="9.2" rx="1.2"/><circle cx="11" cy="7.8" r="1.1" fill="currentColor" stroke="none"/>',
+  GraphNode:'<rect x="2.6" y="3.4" width="10.8" height="9.2" rx="1.2"/><path d="M2.6 6.4h10.8"/><circle cx="4" cy="4.9" r=".7"/><path d="M4.6 9h6.4" stroke-opacity=".6"/>',
+  Range:'<path d="M3 10c2.4 0 2.8-4 5.2-4 1.8 0 2 2.3 4.8 2.3"/><circle cx="5.2" cy="9" r="1.2" fill="currentColor" stroke="none"/><circle cx="9" cy="6.4" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="8.3" r="1.2" fill="currentColor" stroke="none"/>',
+  HSlider:'<path d="M3 8h10"/><circle cx="9" cy="8" r="2" fill="currentColor"/><path d="M3 8v1.6M13 8v1.6"/>',
+  VSlider:'<path d="M8 3v10"/><circle cx="8" cy="10" r="2" fill="currentColor"/><path d="M6.4 3h1.6M6.4 13h1.6"/>',
+  HScrollBar:'<rect x="2" y="6" width="12" height="4" rx="1.5" fill="currentColor" fill-opacity=".25"/><rect x="6" y="6" width="4.5" height="4" rx="1.5" fill="currentColor"/>',
+  VScrollBar:'<rect x="6" y="2" width="4" height="12" rx="1.5" fill="currentColor" fill-opacity=".25"/><rect x="6" y="6" width="4" height="4.5" rx="1.5" fill="currentColor"/>',
+  ProgressBar:'<rect x="2.5" y="6" width="11" height="4.4" rx="1"/><rect x="3.3" y="6.8" width="5.5" height="2.8" rx=".6" fill="currentColor" stroke="none"/>',
+  SpinBox:'<rect x="2.5" y="4.5" width="8" height="7" rx="1"/><path d="M10.5 4.5h3v3.4h-3zM10.5 8.1h3v3.4h-3z"/><path d="M12 5.8l-.8 1h1.6zM12 10.2l-.8-1h1.6z"/>',
+  Separator:'<circle cx="8" cy="8" r="4.5"/>',
+  HSeparator:'<path d="M2 6h12M2 10h12" stroke-opacity=".55"/><path d="M2 8h12"/>',
+  VSeparator:'<path d="M6 2v12M10 2v12" stroke-opacity=".55"/><path d="M8 2v12"/>',
+  VideoStreamPlayer:'<rect x="2.2" y="3.4" width="11.6" height="9.2" rx="1"/><path d="M6.4 6l3.6 2-3.6 2z" fill="currentColor"/>',
+  VirtualJoystick:'<circle cx="8" cy="8.5" r="5.2"/><circle cx="8" cy="8.5" r="2" fill="currentColor" fill-opacity=".55"/>'
+};
+function iconSVG(type, cls=''){
+  const inner = GODOT_ICON_PATHS[type] || GODOT_ICON_PATHS.Control;
+  const abstractish = abstractControlTypes.has(type);
+  const extra = abstractish ? ' is-abstract' : '';
+  return `<svg class="godot-icon ${cls}${extra}" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+}
+function iconGlyph(name){return iconSVG(name,'palette-svg')}
+
+function renderTabs(){
+  const root=document.getElementById('tabs');root.innerHTML='';
+  state.screens.forEach((s,i)=>{
+    const t=document.createElement('div');t.className='tab'+(s.id===state.activeScreenId?' active':'');
+    t.innerHTML=`<span class="tab-name" title="双击重命名">${esc(s.name)}</span><span style="font-size:9px;color:#71808e">.tscn</span>${state.screens.length>1?'<button class="tab-close" title="关闭">×</button>':''}`;
+    t.addEventListener('click',e=>{if(e.target.closest('.tab-close'))return;state.activeScreenId=s.id;state.selectedNodeId=null;renderAll()});
+    t.querySelector('.tab-name').addEventListener('dblclick',e=>{e.stopPropagation();renameScreen(s.id)});
+    t.addEventListener('contextmenu',e=>{e.preventDefault();showTabContextMenu(e.clientX,e.clientY,s.id)});
+    const c=t.querySelector('.tab-close');if(c)c.addEventListener('click',e=>{e.stopPropagation();closeScreen(s.id)});
+    root.appendChild(t);
+  });
+}
+function renameScreen(id){
+  const s=state.screens.find(x=>x.id===id);if(!s)return;
+  const n=prompt('界面 / 场景名称（导出为 .tscn）',s.name);
+  if(n&&n.trim()){s.name=n.trim().replace(/[\\/:*?"<>|]/g,'_');renderAll();toast(`场景已重命名为 ${sceneFileName(s)}`)}
+}
+function duplicateScreen(id){
+  const src=state.screens.find(x=>x.id===id);if(!src)return;pushHistory();
+  const copy=JSON.parse(JSON.stringify(src));const oldToNew=new Map();
+  copy.id=uid('screen');copy.name=uniqueScreenName(src.name+'_Copy');
+  copy.nodes.forEach(n=>{const old=n.id;n.id=uid('node');oldToNew.set(old,n.id)});
+  copy.nodes.forEach(n=>{if(n.parentId)n.parentId=oldToNew.get(n.parentId)||null});
+  state.screens.push(copy);state.activeScreenId=copy.id;state.selectedNodeId=null;renderAll();toast(`已复制场景 ${sceneFileName(copy)}`);
+}
+function uniqueScreenName(base){const names=new Set(state.screens.map(s=>s.name));if(!names.has(base))return base;let i=2;while(names.has(base+i))i++;return base+i;}
+
+function closeScreen(id){
+  if(state.screens.length<=1)return;
+  const s=state.screens.find(x=>x.id===id); if(!confirm(`删除界面「${s.name}」？`))return;pushHistory();
+  state.screens=state.screens.filter(x=>x.id!==id); if(state.activeScreenId===id)state.activeScreenId=state.screens[0].id; state.selectedNodeId=null; renderAll();
+}
+
+function renderBoard(){
+  const board=document.getElementById('board'),wrap=document.getElementById('boardWrap');
+  board.style.width=state.width+'px';board.style.height=state.height+'px';board.style.transform=`scale(${state.zoom})`;board.classList.toggle('grid',state.grid);
+  board.style.backgroundSize=state.gridSize+'px '+state.gridSize+'px';
+  wrap.style.width=(state.width*state.zoom)+'px';wrap.style.height=(state.height*state.zoom)+'px';
+  board.innerHTML='';
+  const s=currentScreen();
+  const bg=s.background||{};const bgSrc=bg.assetKey?backgroundAssets.get(bg.assetKey):null;
+  if(bg.assetKey&&bg.visible!==false&&bgSrc){
+    if(!(bg.w>0&&bg.h>0)){const r=defaultBackgroundRect(bg.naturalW||state.width,bg.naturalH||state.height);Object.assign(bg,r)}
+    const frame=document.createElement('div');frame.id='boardBgFrame';frame.className='board-bg-frame'+(bg.editing?' editing':'');
+    frame.style.left=bg.x+'px';frame.style.top=bg.y+'px';frame.style.width=bg.w+'px';frame.style.height=bg.h+'px';
+    const im=document.createElement('img');im.className='board-bg-image';im.src=bgSrc;im.alt='背景参考图';im.style.opacity=String(bg.opacity??.55);im.style.objectFit=bg.fit||'contain';frame.appendChild(im);
+    if(bg.editing){
+      const label=document.createElement('div');label.className='bg-edit-label';label.textContent='背景参考图 · 拖动移动 / 四角缩放';frame.appendChild(label);
+      ['nw','ne','sw','se'].forEach(p=>{const h=document.createElement('div');h.className='bg-resize-handle '+p;h.dataset.bgHandle=p;frame.appendChild(h)});
+      frame.addEventListener('pointerdown',onBackgroundPointerDown);
+    }
+    board.appendChild(frame)
+  }
+  if(!s.nodes.length){const hint=document.createElement('div');hint.className='canvas-hint';hint.innerHTML='<b>① 左侧选择控件　② 在这里按住鼠标斜拉</b><br>绿色/黑色徽标是 Godot 节点名，不属于实际 UI';board.appendChild(hint)}
+  const sorted=[...s.nodes].sort((a,b)=>(a.z||0)-(b.z||0));
+  for(const n of sorted)board.appendChild(makeNodeEl(n));
+  document.getElementById('zoomLabel').textContent=Math.round(state.zoom*100)+'%';
+  document.getElementById('canvasW').value=state.width;document.getElementById('canvasH').value=state.height;
+  document.getElementById('gridBtn').classList.toggle('active',state.grid);document.getElementById('snapBtn').classList.toggle('active',state.snap);
+  const gs=document.getElementById('gridSizeSelect');if(gs)gs.value=String(state.gridSize);
+  document.getElementById('status').textContent=`${s.nodes.length} 个节点 · ${state.width}×${state.height}`;
+  const hud=document.getElementById('hudScene');if(hud)hud.textContent=sceneFileName(s);
+  const corner=document.getElementById('boardCornerBadge');if(corner)corner.textContent=`${state.width} × ${state.height}`;
+}
+function makeNodeEl(n){
+  const el=document.createElement('div');el.className='ui-node '+nodeVisualClass(n.type)+(containerTypes.has(n.type)?' containerish':'')+(n.id===state.selectedNodeId?' selected':'');
+  el.style.left=n.x+'px';el.style.top=n.y+'px';el.style.width=n.w+'px';el.style.height=n.h+'px';el.style.zIndex=n.z||0;el.dataset.id=n.id;
+  if(n.color){
+    el.style.setProperty('--preview-color',n.color);
+    if(n.type==='ColorRect'||n.type==='Panel'||n.type==='PanelContainer'||n.type==='NinePatchRect'||n.type.includes('Button')) el.style.background=n.color;
+    if(n.type==='Label'||n.type==='RichTextLabel') el.style.color=n.color;
+  }
+  const text=displayTextTypes.has(n.type)?(n.text||defaultText(n.type)):'';
+  el.innerHTML=`<div class="node-badge"><span class="badge-type">[${esc(n.type)}]</span>&nbsp;<span class="badge-name">${esc(n.name)}</span></div>${text?`<div class="actual-text">${esc(text)}</div>`:''}<div class="node-type">${esc(n.anchor||'custom')}</div>`;
+  if(n.id===state.selectedNodeId){['nw','n','ne','e','se','s','sw','w'].forEach(p=>{const h=document.createElement('div');h.className='resize-handle rh-'+p;h.dataset.handle=p;el.appendChild(h)})}
+  el.addEventListener('pointerdown',e=>onNodePointerDown(e,n));
+  return el;
+}
+function nodeVisualClass(type){
+  if(type==='ColorRect')return 'kind-color';if(type==='TextureRect')return 'kind-texture';if(type.includes('Separator'))return 'kind-separator';
+  if(type==='Label'||type==='RichTextLabel')return 'kind-label';
+  if(type==='CheckBox'||type==='CheckButton')return 'kind-check';
+  if(type.includes('Button')||type==='LinkButton'||type==='MenuButton'||type==='OptionButton')return 'kind-button';
+  if(type==='ProgressBar')return 'kind-progress';
+  if(type.includes('Edit')||type==='SpinBox')return 'kind-input';
+  if(type==='Panel'||type==='NinePatchRect'||type==='ItemList'||type==='Tree'||type==='GraphEdit'||type==='GraphElement'||type==='GraphFrame'||type==='GraphNode'||type==='TabBar'||type==='MenuBar')return 'kind-panel';return '';
+}
+function defaultText(type){
+  const m={Label:'Label 文本',RichTextLabel:'富文本',Button:'Button',CheckButton:'CheckButton',CheckBox:'CheckBox',LinkButton:'Link',MenuButton:'Menu',OptionButton:'Option',LineEdit:'输入框',TextEdit:'多行文本',CodeEdit:'代码',SpinBox:'0',TabBar:'Tab',MenuBar:'Menu'};return m[type]||type;
+}
+
+function renderTree(){
+  const nodes=currentScreen().nodes;
+  const targets=[document.getElementById('nodeTree'),document.getElementById('sceneTreeBody')].filter(Boolean);
+  const sceneIssues=validateScene(currentScreen());
+  for(const root of targets){
+    root.innerHTML='';
+    if(root.id==='sceneTreeBody'){
+      const level=worstValidationLevel(sceneIssues);
+      const badge=level==='error'?'⛔':level==='warn'?'⚠':'✓';
+      const head=document.createElement('div');head.className='tree-root';head.innerHTML=`<span style="display:flex;align-items:center;gap:6px"><span class="tree-icon">${iconSVG('Control','tree-svg')}</span>${esc(currentScreen().name)} <small>(Control 根)</small></span><small>${badge} ${nodes.length} 个节点</small>`;root.appendChild(head);
+    }
+    if(!nodes.length){root.insertAdjacentHTML('beforeend','<div style="padding:12px;color:#66727f;font-size:12px">还没有节点</div>');continue}
+    const children=new Map();nodes.forEach(n=>{const p=n.parentId||'root';if(!children.has(p))children.set(p,[]);children.get(p).push(n)});
+    const draw=(pid,depth)=>{(children.get(pid)||[]).sort((a,b)=>(a.z||0)-(b.z||0)).forEach(n=>{
+      const issues=validateNodeStructure(n,currentScreen());const level=worstValidationLevel(issues);const icon=level==='error'?'⛔':level==='warn'?'⚠':'✓';
+      const r=document.createElement('div');r.className='tree-row'+(n.id===state.selectedNodeId?' active':'');
+      r.style.paddingLeft=(8+depth*15)+'px';
+      r.innerHTML=`<span class="tree-icon">${iconSVG(n.type,'tree-svg')}</span><span class="tree-name">${esc(n.name)}</span><span class="tree-type">${esc(n.type)}</span><span class="tree-status ${level}" title="${esc(issues.map(x=>x.message).join('；')||'结构有效')}">${icon}</span>`;
+      r.onclick=()=>{state.selectedNodeId=n.id;state.selectedTool='select';state.activeSidebarTab='inspector';renderAll(false)};
+      root.appendChild(r);draw(n.id,depth+1)
+    })};draw('root',0);
+  }
+}
+function renderInspector(){
+  const root=document.getElementById('inspectorBody');const n=nodeById(state.selectedNodeId);
+  if(!n){root.innerHTML=`<div class="empty-inspector">选择画板中的节点后，这里可以设置：<br><b>Godot 节点名、类型、父节点、Rect、Anchor、颜色与 Codex/MCP 备注</b>。<br><br>节点名徽标只是设计器标记，不会出现在最终游戏 UI 中。</div>`;return}
+  const candidates=currentScreen().nodes.filter(x=>x.id!==n.id && !isDescendant(x.id,n.id));
+  const nodeIssues=validateNodeStructure(n,currentScreen());const nodeLevel=worstValidationLevel(nodeIssues);
+  const parentOptions=candidates.map(x=>{const v=validateParentChild(x,n,currentScreen());return `<option value="${x.id}" ${n.parentId===x.id?'selected':''} ${v.ok?'':'disabled'}>${esc(x.name)} · ${esc(x.type)}${v.ok?'':'（不允许）'}</option>`}).join('');
+  const typeOptions=allControlTypes().map(t=>`<option value="${t}" ${n.type===t?'selected':''}>${esc(t)} — ${esc(metaOf(t).zh)}</option>`).join('');
+  root.innerHTML=`
+    <div class="section"><div class="section-title">节点身份 / Scene Tree</div><div class="section-body">
+      <div class="form-row"><label>控件类型</label><select id="fType">${typeOptions}</select></div>
+      <div class="form-row"><label>节点名</label><input id="fName" value="${esc(n.name)}"></div>
+      <div class="hint">对应 Godot Scene Tree 中的节点名称，例如 <b>StartGameBtn</b>。不是玩家看到的文本。</div>
+      <div class="form-row"><label>父节点</label><select id="fParent"><option value="">[Root Control]</option>${parentOptions}</select></div>
+      <div class="validation-box ${nodeLevel}"><div class="validation-title">${nodeLevel==='error'?'⛔ Godot 结构错误':nodeLevel==='warn'?'⚠ Godot 结构提醒':'✓ Godot 结构有效'}</div>${nodeIssues.length?nodeIssues.map(i=>`<div class="validation-item">• ${esc(i.message)}</div>`).join(''):'<div class="validation-item">当前父子关系可安全导出。</div>'}</div>
+    </div></div>
+
+    <div class="section"><div class="section-title">Layout / Rect2 与 Anchor</div><div class="section-body">
+      <div class="form-row"><label>Anchor 预设</label><select id="fAnchor">
+        <option value="custom" ${n.anchor==='custom'?'selected':''}>自定义坐标</option>
+        <option value="full_rect" ${n.anchor==='full_rect'?'selected':''}>铺满父节点 / Full Rect</option>
+        <option value="center" ${n.anchor==='center'?'selected':''}>居中 / Center</option>
+        <option value="top_wide" ${n.anchor==='top_wide'?'selected':''}>顶部通栏 / Top Wide</option>
+        <option value="bottom_wide" ${n.anchor==='bottom_wide'?'selected':''}>底部通栏 / Bottom Wide</option>
+        <option value="top_left" ${n.anchor==='top_left'?'selected':''}>左上 / Top Left</option>
+        <option value="center_left" ${n.anchor==='center_left'?'selected':''}>左侧居中 / Center Left</option>
+        <option value="center_right" ${n.anchor==='center_right'?'selected':''}>右侧居中 / Center Right</option>
+      </select></div>
+      <div class="form-row"><label>位置 X / Y</label><div class="xywh"><input id="fX" type="number" value="${n.x}"><input id="fY" type="number" value="${n.y}"></div></div>
+      <div class="form-row"><label>尺寸 W / H</label><div class="xywh"><input id="fW" type="number" min="1" value="${n.w}"><input id="fH" type="number" min="1" value="${n.h}"></div></div>
+      <div class="hint">当前相对父节点 Rect：<b>${relRect(n).x}, ${relRect(n).y}, ${relRect(n).w}, ${relRect(n).h}</b></div>
+    </div></div>
+
+    <div class="section"><div class="section-title">内容与视觉预览</div><div class="section-body">
+      <div class="form-row"><label>显示文字</label><input id="fText" value="${esc(n.text||'')}" ${displayTextTypes.has(n.type)?'':'disabled'} placeholder="真正显示给玩家的 UI 文本"></div>
+      <div class="form-row"><label>预览颜色</label><div class="color-row"><input id="fColorPicker" type="color" value="${/^#[0-9a-fA-F]{6}$/.test(n.color||'')?n.color:'#dfe5eb'}"><input id="fColor" value="${esc(n.color||'')}" placeholder="#RRGGBB"></div></div>
+      <div class="form-note">颜色用于原型预览并写入导出规格；Codex 可据此设置 ColorRect / ThemeOverride / StyleBox 等。</div>
+      <div class="form-row"><label>设计备注</label><textarea id="fNote" placeholder="视觉/交互意图，例如：右上角关闭按钮、只在背包打开时出现…">${esc(n.note||'')}</textarea></div>
+      <div class="form-row"><label>Codex / MCP</label><textarea id="fMcpNote" placeholder="例如：连接 pressed 到 _on_start_pressed；由 PlayerStats.health_changed 更新…">${esc(n.mcpNote||'')}</textarea></div>
+    </div></div>
+
+    <div class="section"><div class="section-title">节点操作</div><div class="section-body">
+      <div class="inspect-actions"><button id="dupBtn" class="smallbtn">复制节点</button><button id="frontBtn" class="smallbtn">置于顶层</button><button id="backBtn" class="smallbtn">置于底层</button><button id="delBtn" class="smallbtn danger">删除</button></div>
+    </div></div>`;
+
+  bindInput('fType',v=>{n.type=v;n.color=n.color||defaultColor(v);if(displayTextTypes.has(v)&&!n.text)n.text=defaultText(v)});
+  bindInput('fName',v=>n.name=uniqueName(v.trim()||n.type,n.id));
+  bindInput('fParent',v=>{const old=n.parentId;if(!v){if(graphElementTypes.has(n.type)){toast(`${n.type} 必须位于 GraphEdit 下`);document.getElementById('fParent').value=old||'';return}n.parentId=null;n.anchor='custom';return}const p=nodeById(v);const check=validateParentChild(p,n,currentScreen());if(!check.ok){toast('⛔ '+check.message);document.getElementById('fParent').value=old||'';return}n.parentId=v;n.anchor='custom';if(check.level==='warn')toast('⚠ '+check.message)});
+  bindInput('fAnchor',v=>applyAnchorPreset(n,v));
+  bindNum('fX',v=>{n.anchor='custom';moveNodeTo(n,clamp(v,0,state.width-n.w),n.y)});
+  bindNum('fY',v=>{n.anchor='custom';moveNodeTo(n,n.x,clamp(v,0,state.height-n.h))});
+  bindNum('fW',v=>{n.anchor='custom';n.w=clamp(v,1,state.width-n.x)});
+  bindNum('fH',v=>{n.anchor='custom';n.h=clamp(v,1,state.height-n.y)});
+  bindInput('fText',v=>n.text=v);bindInput('fNote',v=>n.note=v);bindInput('fMcpNote',v=>n.mcpNote=v);
+  const cp=document.getElementById('fColorPicker'),ct=document.getElementById('fColor');
+  if(cp){armHistoryOnFocus(cp);cp.addEventListener('input',()=>{n.color=cp.value;ct.value=cp.value;renderBoard();saveLocal()})}
+  if(ct){armHistoryOnFocus(ct);ct.addEventListener('change',()=>{n.color=ct.value.trim()||defaultColor(n.type);if(/^#[0-9a-fA-F]{6}$/.test(n.color))cp.value=n.color;renderAll()})}
+  document.getElementById('dupBtn').onclick=()=>duplicateNode(n);document.getElementById('delBtn').onclick=()=>deleteNode(n.id);
+  document.getElementById('frontBtn').onclick=()=>{n.z=maxZ()+1;renderAll()};document.getElementById('backBtn').onclick=()=>{n.z=minZ()-1;renderAll()};
+}
+function applyAnchorPreset(n,preset){
+  n.anchor=preset||'custom';if(n.anchor==='custom')return;
+  const p=n.parentId?nodeById(n.parentId):null;const bx=p?p.x:0,by=p?p.y:0,bw=p?p.w:state.width,bh=p?p.h:state.height;
+  if(n.anchor==='full_rect'){n.x=bx;n.y=by;n.w=bw;n.h=bh}
+  else if(n.anchor==='center'){n.x=bx+Math.round((bw-n.w)/2);n.y=by+Math.round((bh-n.h)/2)}
+  else if(n.anchor==='top_wide'){n.x=bx;n.y=by;n.w=bw}
+  else if(n.anchor==='bottom_wide'){n.x=bx;n.y=by+bh-n.h;n.w=bw}
+  else if(n.anchor==='top_left'){n.x=bx;n.y=by}
+  else if(n.anchor==='center_left'){n.x=bx;n.y=by+Math.round((bh-n.h)/2)}
+  else if(n.anchor==='center_right'){n.x=bx+bw-n.w;n.y=by+Math.round((bh-n.h)/2)}
+  n.x=clamp(n.x,0,state.width-n.w);n.y=clamp(n.y,0,state.height-n.h);
+}
+function bindInput(id,fn){const el=document.getElementById(id);if(!el)return;armHistoryOnFocus(el);el.addEventListener('input',()=>{fn(el.value);renderBoard();renderTree();saveLocal()})}
+function bindNum(id,fn){const el=document.getElementById(id);if(!el)return;armHistoryOnFocus(el);el.addEventListener('change',()=>{fn(Number(el.value)||0);renderAll()})}
+function isDescendant(candidateId,nodeId){let cur=nodeById(candidateId);const seen=new Set();while(cur&&cur.parentId&&!seen.has(cur.id)){if(cur.parentId===nodeId)return true;seen.add(cur.id);cur=nodeById(cur.parentId)}return false}
+
+function renderAll(save=true){
+  document.getElementById('projectTitle').value=state.projectName;
+  renderTabs();renderPalette(document.getElementById('paletteSearch').value||'');renderBoard();renderTree();renderInspector();renderBackgroundPanel();
+  const selecting=state.selectedTool==='select';
+  document.getElementById('selectTool').classList.toggle('active',selecting);
+  const smb=document.getElementById('selectModeBtn'),dmb=document.getElementById('drawModeBtn');
+  if(smb)smb.classList.toggle('active',selecting);if(dmb)dmb.classList.toggle('active',!selecting);
+  const pill=document.getElementById('activeToolPill');if(pill)pill.textContent=selecting?'选择模式 (V)':`绘制 ${state.selectedTool} (D)`;
+  const mini=document.getElementById('drawTypeMini');if(mini)mini.textContent=state.lastDrawType||'Button';
+  const cont=document.getElementById('continuousDrawToggle');if(cont)cont.checked=!!state.continuousDraw;
+  const loose=document.getElementById('looseLayoutToggle'),policyCard=document.getElementById('layoutPolicyCard'),policyBadge=document.getElementById('layoutPolicyBadge');
+  if(loose)loose.checked=!!state.looseLayout;
+  if(policyCard)policyCard.classList.toggle('on',!!state.looseLayout);
+  if(policyBadge)policyBadge.textContent=state.looseLayout?'快速草图 · AI 可优化尺寸':'精确尺寸模式';
+  const ib=document.getElementById('inspectorBody'),tb=document.getElementById('sceneTreeBody'),it=document.getElementById('inspectorTabBtn'),st=document.getElementById('sceneTreeTabBtn');
+  if(state.activeSidebarTab==='sceneTree'){ib?.classList.add('hidden');tb?.classList.add('active');it?.classList.remove('active');st?.classList.add('active')}
+  else{ib?.classList.remove('hidden');tb?.classList.remove('active');it?.classList.add('active');st?.classList.remove('active')}
+  updateHistoryButtons();
+  if(save)saveLocal();
+}
+
+let bgTransform=null;
+function onBackgroundPointerDown(e){
+  const s=currentScreen(),bg=s?.background;if(!bg?.assetKey||!bg.editing||e.button!==0)return;
+  e.preventDefault();e.stopPropagation();
+  pushHistory();
+  const p=logicalPoint(e),handle=e.target?.dataset?.bgHandle||null;
+  bgTransform={mode:handle?'resize':'move',handle,start:p,orig:{x:bg.x,y:bg.y,w:bg.w,h:bg.h},aspect:(bg.naturalW&&bg.naturalH)?bg.naturalW/bg.naturalH:(bg.w/Math.max(1,bg.h))};
+}
+function updateBackgroundFrameStyle(){
+  const bg=currentScreen()?.background,el=document.getElementById('boardBgFrame');if(!bg||!el)return;
+  el.style.left=bg.x+'px';el.style.top=bg.y+'px';el.style.width=bg.w+'px';el.style.height=bg.h+'px';
+}
+window.addEventListener('pointermove',e=>{
+  if(!bgTransform)return;
+  const bg=currentScreen()?.background;if(!bg)return;
+  const p=logicalPoint(e),dx=p.x-bgTransform.start.x,dy=p.y-bgTransform.start.y,o=bgTransform.orig;
+  if(bgTransform.mode==='move'){
+    bg.x=clamp(Math.round(o.x+dx),-o.w+24,state.width-24);bg.y=clamp(Math.round(o.y+dy),-o.h+24,state.height-24);
+  }else{
+    const h=bgTransform.handle;let anchorX,anchorY,targetX,targetY;
+    if(h==='se'){anchorX=o.x;anchorY=o.y;targetX=o.x+o.w+dx;targetY=o.y+o.h+dy}
+    if(h==='sw'){anchorX=o.x+o.w;anchorY=o.y;targetX=o.x+dx;targetY=o.y+o.h+dy}
+    if(h==='ne'){anchorX=o.x;anchorY=o.y+o.h;targetX=o.x+o.w+dx;targetY=o.y+dy}
+    if(h==='nw'){anchorX=o.x+o.w;anchorY=o.y+o.h;targetX=o.x+dx;targetY=o.y+dy}
+    const sx=targetX>=anchorX?1:-1,sy=targetY>=anchorY?1:-1;
+    let w=Math.max(24,Math.abs(targetX-anchorX)),hh=Math.max(24,Math.abs(targetY-anchorY));
+    // 背景参考图默认保持原图比例，避免截图被拖变形。
+    const a=bgTransform.aspect||1;if(w/hh>a)hh=w/a;else w=hh*a;
+    w=Math.max(24,Math.round(w));hh=Math.max(24,Math.round(hh));
+    bg.w=w;bg.h=hh;bg.x=sx>0?anchorX:anchorX-w;bg.y=sy>0?anchorY:anchorY-hh;
+  }
+  updateBackgroundFrameStyle();
+});
+window.addEventListener('pointerup',()=>{if(bgTransform){bgTransform=null;renderBackgroundPanel();saveLocal()}});
+
+function logicalPoint(e){const rect=document.getElementById('board').getBoundingClientRect();return {x:clamp((e.clientX-rect.left)/state.zoom,0,state.width),y:clamp((e.clientY-rect.top)/state.zoom,0,state.height)}}
+let interaction=null;
+function startDrawing(e){
+  if(state.selectedTool==='select'||isSpacePressed)return; e.preventDefault();e.stopPropagation();
+  const p=logicalPoint(e), start={x:snap(p.x),y:snap(p.y)};const board=document.getElementById('board');
+  const pr=document.createElement('div');pr.className='draw-preview';pr.style.left=start.x+'px';pr.style.top=start.y+'px';pr.style.width='1px';pr.style.height='1px';board.appendChild(pr);
+  interaction={mode:'draw',start,preview:pr,type:state.selectedTool,pointerId:e.pointerId}; board.setPointerCapture?.(e.pointerId);
+}
+function onNodePointerDown(e,n){
+  if(isSpacePressed)return;
+  if(state.selectedTool!=='select'){startDrawing(e);return}
+  e.preventDefault();e.stopPropagation();state.selectedNodeId=n.id;renderAll(false);
+  const handle=e.target.dataset.handle;const p=logicalPoint(e);
+  if(handle){interaction={mode:'resize',nodeId:n.id,handle,start:p,orig:{x:n.x,y:n.y,w:n.w,h:n.h},pointerId:e.pointerId,historyBefore:historySnapshot()};return}
+  interaction={mode:'move',nodeId:n.id,start:p,orig:{x:n.x,y:n.y},pointerId:e.pointerId,historyBefore:historySnapshot(),children:getDescendantIds(n.id).map(id=>{const c=nodeById(id);return{id,x:c.x,y:c.y}})};
+}
+function getDescendantIds(id){const out=[];const walk=p=>currentScreen().nodes.filter(n=>n.parentId===p).forEach(n=>{out.push(n.id);walk(n.id)});walk(id);return out}
+function moveNodeTo(n,x,y){const dx=x-n.x,dy=y-n.y;n.x=Math.round(x);n.y=Math.round(y);for(const id of getDescendantIds(n.id)){const c=nodeById(id);c.x=clamp(c.x+dx,0,state.width-c.w);c.y=clamp(c.y+dy,0,state.height-c.h)}}
+
+const board=document.getElementById('board');
+board.addEventListener('pointerdown',e=>{
+  if(isSpacePressed)return;
+  if(e.target!==board && !e.target.classList.contains('canvas-hint'))return;
+  if(state.selectedTool==='select'){state.selectedNodeId=null;renderAll(false);return}
+  startDrawing(e);
+});
+board.addEventListener('pointermove',e=>{
+  const p=logicalPoint(e);const hud=document.getElementById('cursorHud');if(hud)hud.textContent=`X: ${Math.round(p.x)}, Y: ${Math.round(p.y)}`;
+});
+window.addEventListener('pointermove',e=>{
+  if(!interaction)return; const p=logicalPoint(e);
+  if(interaction.mode==='draw'){
+    const a=interaction.start,b={x:snap(p.x),y:snap(p.y)};const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y),w=Math.max(state.gridSize,Math.abs(b.x-a.x)),h=Math.max(state.gridSize,Math.abs(b.y-a.y));
+    Object.assign(interaction,{rect:{x,y,w,h}});const pr=interaction.preview;pr.style.left=x+'px';pr.style.top=y+'px';pr.style.width=w+'px';pr.style.height=h+'px';pr.dataset.size=`${w}×${h}`;
+  } else if(interaction.mode==='move'){
+    const n=nodeById(interaction.nodeId);if(!n)return;const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;let nx=snap(interaction.orig.x+dx),ny=snap(interaction.orig.y+dy);nx=clamp(nx,0,state.width-n.w);ny=clamp(ny,0,state.height-n.h);const ddx=nx-n.x,ddy=ny-n.y;n.x=nx;n.y=ny;interaction.children.forEach(base=>{const c=nodeById(base.id);if(c){c.x=clamp(base.x+(nx-interaction.orig.x),0,state.width-c.w);c.y=clamp(base.y+(ny-interaction.orig.y),0,state.height-c.h)}});renderBoard();renderTree();
+  } else if(interaction.mode==='resize'){
+    const n=nodeById(interaction.nodeId);if(!n)return;const o=interaction.orig;let x=o.x,y=o.y,w=o.w,h=o.h;const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;
+    if(interaction.handle.includes('e'))w=snap(o.w+dx);if(interaction.handle.includes('s'))h=snap(o.h+dy);if(interaction.handle.includes('w')){x=snap(o.x+dx);w=snap(o.w-dx)}if(interaction.handle.includes('n')){y=snap(o.y+dy);h=snap(o.h-dy)}
+    if(w<8){if(interaction.handle.includes('w'))x=o.x+o.w-8;w=8}if(h<8){if(interaction.handle.includes('n'))y=o.y+o.h-8;h=8}
+    x=clamp(x,0,state.width-8);y=clamp(y,0,state.height-8);w=clamp(w,8,state.width-x);h=clamp(h,8,state.height-y);Object.assign(n,{x,y,w,h});renderBoard();renderTree();
+  }
+});
+window.addEventListener('pointerup',e=>{
+  if(!interaction)return;
+  const finished=interaction;
+  if(finished.mode==='draw'){
+    finished.preview.remove();let r=finished.rect;
+    if(!r){const p=finished.start,[w,h]=defaultSizes[finished.type]||[180,80];r={x:p.x,y:p.y,w:Math.min(w,state.width-p.x),h:Math.min(h,state.height-p.y)}}
+    pushHistory();const n=createNode(finished.type,r);state.selectedNodeId=n.id;state.lastDrawType=finished.type;if(!state.continuousDraw)state.selectedTool='select';else state.selectedTool=finished.type;
+    if(n.parentId){const p=nodeById(n.parentId),v=validateParentChild(p,n,currentScreen());toast(`${n.name} 已作为 ${p.name} 的子节点${v.level==='warn'?' · '+v.message:''}`)}
+    else if(graphElementTypes.has(n.type))toast(`⛔ ${n.type} 需要放进 GraphEdit 内`);
+  } else if(finished.mode==='move' || finished.mode==='resize'){
+    autoReparentNode(nodeById(finished.nodeId));
+    const after=historySnapshot();if(finished.historyBefore&&finished.historyBefore!==after)pushHistorySnapshot(finished.historyBefore);
+  }
+  interaction=null;renderAll();
+});
+
+function createNode(type,r){
+  const n={id:uid('node'),type,name:uniqueName(type),x:Math.round(r.x),y:Math.round(r.y),w:Math.max(8,Math.round(r.w)),h:Math.max(8,Math.round(r.h)),text:displayTextTypes.has(type)?defaultText(type):'',note:'',mcpNote:'',color:defaultColor(type),anchor:'custom',parentId:null,z:maxZ()+1};
+  n.parentId=findAutoParent(n);currentScreen().nodes.push(n);return n;
+}
+function findAutoParent(n){
+  const blocked=new Set([n.id,...getDescendantIds(n.id)]);
+  const candidates=currentScreen().nodes
+    .filter(p=>!blocked.has(p.id) && containerTypes.has(p.type) && n.x>=p.x && n.y>=p.y && n.x+n.w<=p.x+p.w && n.y+n.h<=p.y+p.h)
+    .map(p=>({p,v:validateParentChild(p,n,currentScreen())}))
+    .filter(x=>x.v.ok)
+    .sort((a,b)=>(a.p.w*a.p.h)-(b.p.w*b.p.h) || (b.p.z||0)-(a.p.z||0));
+  return candidates[0]?.p.id||null;
+}
+function nodeInsideParentRect(n,p){return !!p && n.x>=p.x&&n.y>=p.y&&n.x+n.w<=p.x+p.w&&n.y+n.h<=p.y+p.h}
+function autoReparentNode(n,{announce=true}={}){
+  if(!n)return;
+  const old=n.parentId;const candidate=findAutoParent(n);
+  if(candidate===old)return;
+  if(candidate){
+    const p=nodeById(candidate),v=validateParentChild(p,n,currentScreen());
+    if(v.ok){n.parentId=candidate;n.anchor='custom';if(announce)toast(`${n.name} → ${p.name} 的子节点${v.level==='warn'?'（自动布局）':''}`);return}
+  }
+  const oldParent=old?nodeById(old):null;
+  if(oldParent && !nodeInsideParentRect(n,oldParent)){
+    if(graphElementTypes.has(n.type)){if(announce)toast(`⛔ ${n.type} 必须保持在 GraphEdit 内`);return}
+    n.parentId=null;n.anchor='custom';if(announce)toast(`${n.name} 已移回 Root`);
+  }
+}
+function uniqueName(base,excludeId=null){
+  base=(base||'Control').replace(/\s+/g,'_').replace(/[^\w\u4e00-\u9fa5]/g,'_');const names=new Set(currentScreen().nodes.filter(n=>n.id!==excludeId).map(n=>n.name));if(!names.has(base))return base;let i=2;while(names.has(base+i))i++;return base+i;
+}
+function maxZ(){return Math.max(0,...currentScreen().nodes.map(n=>n.z||0))}function minZ(){return Math.min(0,...currentScreen().nodes.map(n=>n.z||0))}
+function duplicateNode(n){pushHistory();const copy=JSON.parse(JSON.stringify(n));copy.id=uid('node');copy.name=uniqueName(n.name);copy.x=clamp(n.x+16,0,state.width-n.w);copy.y=clamp(n.y+16,0,state.height-n.h);copy.z=maxZ()+1;currentScreen().nodes.push(copy);state.selectedNodeId=copy.id;renderAll()}
+function deleteNode(id){pushHistory();const ids=new Set([id,...getDescendantIds(id)]);currentScreen().nodes=currentScreen().nodes.filter(n=>!ids.has(n.id));state.selectedNodeId=null;renderAll()}
+
+function relRect(n){const p=n.parentId?nodeById(n.parentId):null;return p?{x:n.x-p.x,y:n.y-p.y,w:n.w,h:n.h}:{x:n.x,y:n.y,w:n.w,h:n.h}}
+function sanitizeFileName(s){return (s||'godot_ui').replace(/[\\/:*?"<>|]/g,'_')}
+function download(name,content,type='text/plain;charset=utf-8'){
+  const blob=new Blob([content],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
+}
+
+function godotEsc(s){return String(s??'').replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\n/g,'\\n')}
+function godotNodeName(s){return String(s||'Node').replace(/[.:@/"%?\[\]\\]/g,'_')||'Node'}
+function parseHexColor(hex){
+  const m=String(hex||'').trim().match(/^#([0-9a-fA-F]{6})([0-9a-fA-F]{2})?$/);if(!m)return null;
+  const h=m[1],a=m[2]||'ff';return [parseInt(h.slice(0,2),16)/255,parseInt(h.slice(2,4),16)/255,parseInt(h.slice(4,6),16)/255,parseInt(a,16)/255];
+}
+function tscnNum(n){const x=Math.round(Number(n)*1000)/1000;return Number.isInteger(x)?String(x):String(x)}
+function orderedSceneNodes(screen){
+  const out=[],children=new Map();screen.nodes.forEach(n=>{const k=n.parentId||'root';if(!children.has(k))children.set(k,[]);children.get(k).push(n)});
+  const walk=id=>{(children.get(id)||[]).sort((a,b)=>(a.z||0)-(b.z||0)).forEach(n=>{out.push(n);walk(n.id)})};walk('root');return out;
+}
+function nodePathInScene(node,screen){
+  const parts=[];let cur=node;const seen=new Set();while(cur&&cur.parentId&&!seen.has(cur.id)){seen.add(cur.id);const p=screen.nodes.find(x=>x.id===cur.parentId);if(!p)break;parts.unshift(godotNodeName(p.name));cur=p}return parts.join('/');
+}
+function isContainerType(type){return autoLayoutTypes.has(type) || type==='GraphElement'||type==='GraphNode'||type==='GraphFrame'}
+function writeAnchorLayout(lines,n,rr){
+  const a=n.anchor||'custom',w=rr.w,h=rr.h;
+  if(a==='full_rect'){
+    lines.push('layout_mode = 1','anchors_preset = 15','anchor_right = 1.0','anchor_bottom = 1.0','grow_horizontal = 2','grow_vertical = 2');return;
+  }
+  if(a==='center'){
+    lines.push('layout_mode = 1','anchor_left = 0.5','anchor_top = 0.5','anchor_right = 0.5','anchor_bottom = 0.5',`offset_left = ${tscnNum(-w/2)}`,`offset_top = ${tscnNum(-h/2)}`,`offset_right = ${tscnNum(w/2)}`,`offset_bottom = ${tscnNum(h/2)}`);return;
+  }
+  if(a==='top_wide'){
+    lines.push('layout_mode = 1','anchor_right = 1.0',`offset_top = ${tscnNum(rr.y)}`,`offset_bottom = ${tscnNum(rr.y+h)}`);return;
+  }
+  if(a==='bottom_wide'){
+    lines.push('layout_mode = 1','anchor_top = 1.0','anchor_right = 1.0','anchor_bottom = 1.0',`offset_top = ${tscnNum(-h)}`);return;
+  }
+  if(a==='center_left'){
+    lines.push('layout_mode = 1','anchor_top = 0.5','anchor_bottom = 0.5',`offset_left = ${tscnNum(rr.x)}`,`offset_top = ${tscnNum(-h/2)}`,`offset_right = ${tscnNum(rr.x+w)}`,`offset_bottom = ${tscnNum(h/2)}`);return;
+  }
+  if(a==='center_right'){
+    lines.push('layout_mode = 1','anchor_left = 1.0','anchor_top = 0.5','anchor_right = 1.0','anchor_bottom = 0.5',`offset_left = ${tscnNum(-w)}`,`offset_top = ${tscnNum(-h/2)}`,`offset_bottom = ${tscnNum(h/2)}`);return;
+  }
+  lines.push('layout_mode = 0',`offset_left = ${tscnNum(rr.x)}`,`offset_top = ${tscnNum(rr.y)}`,`offset_right = ${tscnNum(rr.x+w)}`,`offset_bottom = ${tscnNum(rr.y+h)}`);
+}
+function buildTscn(screen=currentScreen()){
+  const issues=validateScene(screen),errors=issues.filter(i=>i.level==='error');
+  if(errors.length) throw new Error(errors.map(i=>`${i.nodeName}: ${i.message}`).join('\n'));
+  const lines=['[gd_scene format=3]',''];
+  const rootName=godotNodeName(screen.name||'UIRoot');
+  lines.push(`[node name="${godotEsc(rootName)}" type="Control"]`,'layout_mode = 3','anchors_preset = 15','anchor_right = 1.0','anchor_bottom = 1.0','grow_horizontal = 2','grow_vertical = 2','');
+  for(const n of orderedSceneNodes(screen)){
+    const parentPath=nodePathInScene(n,screen);const parentAttr=parentPath?parentPath:'.';
+    lines.push(`[node name="${godotEsc(godotNodeName(n.name))}" type="${godotEsc(n.type)}" parent="${godotEsc(parentAttr)}"]`);
+    const p=n.parentId?screen.nodes.find(x=>x.id===n.parentId):null;const rr=p?{x:n.x-p.x,y:n.y-p.y,w:n.w,h:n.h}:{x:n.x,y:n.y,w:n.w,h:n.h};
+    if(p && isContainerType(p.type)){
+      lines.push('layout_mode = 2');
+      if(rr.w>0||rr.h>0)lines.push(`custom_minimum_size = Vector2(${tscnNum(rr.w)}, ${tscnNum(rr.h)})`);
+    }else writeAnchorLayout(lines,n,rr);
+    if(displayTextTypes.has(n.type) && n.text) lines.push(`text = "${godotEsc(n.text)}"`);
+    if(n.type==='ColorRect'){
+      const c=parseHexColor(n.color);if(c)lines.push(`color = Color(${c.map(tscnNum).join(', ')})`);
+    }
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+function treePreviewHtml(screen=currentScreen()){
+  const children=new Map();screen.nodes.forEach(n=>{const k=n.parentId||'root';if(!children.has(k))children.set(k,[]);children.get(k).push(n)});
+  let html=`<div class="godot-tree-line"><span class="type">Control</span> <span class="name">${esc(screen.name)}</span></div>`;
+  const walk=(id,prefix)=>{const arr=(children.get(id)||[]).sort((a,b)=>(a.z||0)-(b.z||0));arr.forEach((n,i)=>{const last=i===arr.length-1;html+=`<div class="godot-tree-line">${prefix}${last?'└─':'├─'} <span class="type">${esc(n.type)}</span> <span class="name">${esc(n.name)}</span></div>`;walk(n.id,prefix+(last?'   ':'│  '))})};walk('root','');return html;
+}
+function openGodotExport(){
+  const s=currentScreen(),issues=validateScene(s),level=worstValidationLevel(issues),bar=document.getElementById('godotValidationBar');
+  document.getElementById('godotTreePreview').innerHTML=treePreviewHtml(s);
+  try{document.getElementById('godotCodePreview').textContent=buildTscn(s)}catch(err){document.getElementById('godotCodePreview').textContent='无法导出：\n\n'+err.message}
+  bar.className='godot-validation-bar '+(level==='ok'?'':level);bar.textContent=level==='error'?`⛔ 有 ${issues.filter(i=>i.level==='error').length} 个结构错误，修复后才能导出 .tscn。`:level==='warn'?`⚠ 可导出，但有 ${issues.filter(i=>i.level==='warn').length} 条 Godot 布局提醒。`:'✓ 当前父子结构通过验证，可直接导出 Godot .tscn。';
+  document.getElementById('godotModal').classList.add('show');
+}
+
+function hierarchyLines(s){
+  const byParent=new Map();s.nodes.forEach(n=>{const k=n.parentId||'root';if(!byParent.has(k))byParent.set(k,[]);byParent.get(k).push(n)});
+  const lines=[`[Root Control] ${s.name}`];
+  const walk=(pid,prefix)=>{const arr=(byParent.get(pid)||[]).sort((a,b)=>(a.z||0)-(b.z||0));arr.forEach((n,i)=>{const last=i===arr.length-1;lines.push(`${prefix}${last?'└──':'├──'} [${n.type}] ${n.name}`);walk(n.id,prefix+(last?'    ':'│   '))})};
+  walk('root','');return lines;
+}
+function buildMarkdown(){
+  state.projectName=document.getElementById('projectTitle').value.trim()||'Godot UI';
+  const safeCell=v=>String(v??'').replace(/\|/g,'\\|').replace(/\n/g,'<br>');
+  let md=`# ${state.projectName} — Godot 4 UI Blueprint\n\n`;
+  md+=`> 用途：将本文件交给 Codex / Godot MCP，按规格在 Godot 4.x 中创建或更新 UI 场景。\n\n`;
+  md+=`## 1. Codex / Godot MCP 执行约定\n\n`;
+  md+=`- 根 UI 节点使用 \`Control\`，设计基准分辨率：**${state.width} × ${state.height} px**。\n`;
+  md+=`- **节点名 (Node Name)** 是 Godot Scene Tree 中的节点名称；设计器画面上的节点名徽标只是编辑辅助，禁止把徽标内容额外做成 Label。\n`;
+  md+=`- **显示文字 (Display Text)** 才是玩家真正看到的文本。\n`;
+  if(state.looseLayout){
+    md+=`\n### 尺寸策略：快速草图 / 不严格按照尺寸\n\n`;
+    md+=`> **重要：当前蓝图主要表达布局结构与大概比例，不要求逐像素照搬设计器中的 x / y / width / height。**\n\n`;
+    md+=`- 当前表格里的绝对 Rect、相对 Rect、宽高与间距均视为**构图参考值**，用于说明大致位置、面积比例、视觉层次和控件之间的关系。\n`;
+    md+=`- 如果当前 Godot 项目中已经存在 UI 规范、项目 Markdown、设计文档、Theme、字体字号、基准分辨率、Safe Area、Container 间距或其他明确尺寸设定，**优先遵循原项目既有设定**，不要用本草图覆盖它们。\n`;
+    md+=`- 如果原项目没有明确尺寸规范，则允许 Codex / AI 根据实际窗口尺寸、内容长度、可读性、Godot Control / Container / Anchors / Size Flags 机制重新确定更合理的具体尺寸、间距和偏移。\n`;
+    md+=`- AI 可以对具体尺寸做更好的设计，但必须保留：**节点用途、父子层级、控件类型、功能关系、大致相对位置、主要视觉层次和设计备注**。\n`;
+    md+=`- 不要因为草图中的临时尺寸而制造拥挤、文字截断、Container 布局冲突或不合理的固定像素布局；优先得到可维护、响应式且视觉合理的 Godot UI。\n\n`;
+  }else{
+    md+=`- 必须保留父子关系、节点类型、绝对 Rect、相对父节点 Rect、Anchor 意图与层级顺序；尺寸按本规格实现。\n`;
+  }
+  md+=`- Container 子节点若在 Godot 中被自动布局覆盖，请按“视觉结果 + 父子结构 + 备注”选择合适的 size_flags / theme constants，不要机械保留会冲突的手工 offset。\n`;
+  md+=`- “Codex / MCP 备注”属于实现要求：包括信号连接、动态数据、脚本行为、资源绑定等。\n\n`;
+
+  md+=`## 2. Scene Manifest\n\n`;
+  state.screens.forEach((s,i)=>{md+=`- ${i+1}. \`${sceneFileName(s)}\` — ${s.nodes.length} 个 UI 节点\n`});md+='\n';
+
+  state.screens.forEach((s,si)=>{
+    md+=`---\n\n## ${si+1}. 场景：\`${sceneFileName(s)}\`\n\n`;
+    md+=`### 场景树层级\n\n\`\`\`text\n${hierarchyLines(s).join('\n')}\n\`\`\`\n\n`;
+    md+=`### 节点规格\n\n`;
+    md+=`| # | 节点名 | 类型 | 父节点 | 绝对 Rect | 相对父节点 Rect | Anchor | 显示文字 | 颜色 | 设计备注 | Codex / MCP 备注 |\n`;
+    md+=`|---:|---|---|---|---|---|---|---|---|---|---|\n`;
+    [...s.nodes].sort((a,b)=>(a.z||0)-(b.z||0)).forEach((n,i)=>{
+      const p=s.nodes.find(x=>x.id===n.parentId),rr=p?{x:n.x-p.x,y:n.y-p.y,w:n.w,h:n.h}:{x:n.x,y:n.y,w:n.w,h:n.h};
+      md+=`| ${i+1} | \`${safeCell(n.name)}\` | \`${n.type}\` | ${p?'`'+safeCell(p.name)+'`':'`Root`'} | \`${n.x}, ${n.y}, ${n.w}, ${n.h}\` | \`${rr.x}, ${rr.y}, ${rr.w}, ${rr.h}\` | \`${safeCell(n.anchor||'custom')}\` | ${safeCell(n.text||'')} | \`${safeCell(n.color||'')}\` | ${safeCell(n.note||'')} | ${safeCell(n.mcpNote||'')} |\n`;
+    });
+    if(!s.nodes.length)md+=`| - | - | - | - | - | - | - | - | - | 当前场景暂无节点 | - |\n`;
+
+    md+=`\n### MCP 建场景建议\n\n`;
+    md+=`1. 创建 \`${sceneFileName(s)}\`，根节点为 \`Control\`，Full Rect。\n`;
+    md+=`2. 按“场景树层级”从父到子创建节点；不要把所有节点都挂到根节点。\n`;
+    md+=state.looseLayout?`3. 对每个节点保留类型、节点名、文本、颜色/Theme 意图与大致布局；Rect 只作参考，具体尺寸可结合原项目规范或由 AI 优化。\n`:`3. 对每个节点应用类型、节点名、文本、颜色/Theme 意图、Anchor 与 Rect。\n`;
+    md+=`4. 最后按“Codex / MCP 备注”连接信号和运行时数据逻辑。\n\n`;
+  });
+
+  const machine={project:state.projectName,engine:'Godot 4.x',viewport:{width:state.width,height:state.height},layoutPolicy:{mode:state.looseLayout?'adaptive_sketch':'exact',rectsAreApproximate:!!state.looseLayout,preferExistingProjectSpecs:true,allowAIToOptimizeDimensions:!!state.looseLayout},screens:state.screens.map(s=>({id:s.id,name:s.name,file:sceneFileName(s),nodes:s.nodes.map(n=>{const p=s.nodes.find(x=>x.id===n.parentId);return{id:n.id,name:n.name,type:n.type,parentId:n.parentId,parentName:p?.name||null,rect:{x:n.x,y:n.y,w:n.w,h:n.h},relativeRect:p?{x:n.x-p.x,y:n.y-p.y,w:n.w,h:n.h}:{x:n.x,y:n.y,w:n.w,h:n.h},anchor:n.anchor||'custom',text:n.text||'',color:n.color||'',designNote:n.note||'',mcpNote:n.mcpNote||'',z:n.z||0}})}))};
+  md+=`---\n\n## Machine-readable JSON\n\n> Codex/MCP 可优先读取这一段，避免从表格反推结构。\n\n\`\`\`json\n${JSON.stringify(machine,null,2)}\n\`\`\`\n`;
+  return md;
+}
+function exportMarkdown(){download(sanitizeFileName(state.projectName)+'_Godot_UI_Blueprint.md',buildMarkdown(),'text/markdown;charset=utf-8');toast('已导出 Markdown 设计稿')}
+function previewMarkdown(){document.getElementById('mdPreview').textContent=buildMarkdown();document.getElementById('mdModal').classList.add('show')}
+async function saveJson(){
+  state.projectName=document.getElementById('projectTitle').value.trim()||'Godot UI';
+  const pack=JSON.parse(JSON.stringify(state));
+  // 背景参考图完全不属于项目数据：图片内容、文件名、透明度、适配方式都不保存。
+  pack.screens?.forEach(s=>{delete s.background});
+  download(sanitizeFileName(state.projectName)+'_UI_project.json',JSON.stringify(pack,null,2),'application/json');
+  toast('已保存项目 JSON（不包含背景参考图）')
+}
+
+// toolbar/events
+document.getElementById('paletteSearch').addEventListener('input',e=>renderPalette(e.target.value));
+document.getElementById('selectTool').onclick=()=>{state.selectedTool='select';renderAll(false)};
+document.getElementById('selectModeBtn').onclick=()=>{state.selectedTool='select';renderAll(false)};
+document.getElementById('drawModeBtn').onclick=()=>{state.selectedTool=state.lastDrawType||'Button';renderAll(false)};
+document.getElementById('continuousDrawToggle').addEventListener('change',e=>{state.continuousDraw=e.target.checked;saveLocal()});
+document.getElementById('looseLayoutToggle').addEventListener('change',e=>{pushHistory();state.looseLayout=e.target.checked;renderAll();toast(state.looseLayout?'已开启快速草图：MD 中尺寸仅作参考':'已恢复精确尺寸模式')});
+document.getElementById('bgUploadBtn').addEventListener('click',()=>document.getElementById('bgFileInput').click());
+document.getElementById('bgEditBtn').addEventListener('click',()=>{const s=currentScreen();if(!s?.background?.assetKey)return;s.background.editing=!s.background.editing;state.selectedTool='select';state.selectedNodeId=null;renderAll(false);toast(s.background.editing?'背景摆放模式：拖图片移动，拖四角缩放':'已完成背景摆放')});
+document.getElementById('bgFileInput').addEventListener('change',async e=>{const f=e.target.files?.[0];if(f)await setBackgroundFromFile(f);e.target.value=''});
+document.getElementById('bgClearBtn').addEventListener('click',()=>{const s=currentScreen();if(!s?.background?.assetKey)return;pushHistory();s.background={assetKey:null,name:'',opacity:.55,fit:'contain',visible:true,x:0,y:0,w:0,h:0,editing:false,naturalW:0,naturalH:0};renderAll();toast('已移除临时背景参考图')});
+document.getElementById('bgVisibleToggle').addEventListener('change',e=>{const s=currentScreen();if(!s?.background?.assetKey)return;pushHistory();s.background.visible=e.target.checked;renderAll()});
+document.getElementById('bgOpacityRange').addEventListener('pointerdown',()=>{const el=document.getElementById('bgOpacityRange');if(!el.dataset.historyArmed){pushHistory();el.dataset.historyArmed='1'}});
+document.getElementById('bgOpacityRange').addEventListener('input',e=>{const s=currentScreen();if(!s?.background?.assetKey)return;s.background.opacity=clamp(Number(e.target.value)/100,.05,1);renderBoard();saveLocal()});
+document.getElementById('bgOpacityRange').addEventListener('change',e=>{e.target.dataset.historyArmed=''});
+document.getElementById('bgFitSelect').addEventListener('change',e=>{const s=currentScreen();if(!s?.background?.assetKey)return;pushHistory();s.background.fit=e.target.value;renderAll()});
+document.getElementById('addScreenBtn').onclick=()=>{pushHistory();const s={id:uid('screen'),name:`界面 ${state.screens.length+1}`,nodes:[]};state.screens.push(s);state.activeScreenId=s.id;state.selectedNodeId=null;renderAll()};
+armHistoryOnFocus(document.getElementById('projectTitle'));document.getElementById('projectTitle').addEventListener('change',e=>{state.projectName=e.target.value.trim()||'Godot UI Project';saveLocal()});
+document.getElementById('exportMdBtn').onclick=exportMarkdown;document.getElementById('previewMdBtn').onclick=previewMarkdown;document.getElementById('exportGodotBtn').onclick=openGodotExport;document.getElementById('saveJsonBtn').onclick=saveJson;
+document.getElementById('closeGodotModal').onclick=()=>document.getElementById('godotModal').classList.remove('show');
+document.getElementById('godotModal').addEventListener('click',e=>{if(e.target.id==='godotModal')e.currentTarget.classList.remove('show')});
+document.getElementById('copyGodotBtn').onclick=async()=>{try{const t=buildTscn(currentScreen());try{await navigator.clipboard.writeText(t)}catch{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove()}toast('已复制 .tscn 源码')}catch(err){toast('⛔ 请先修复结构错误')}};
+document.getElementById('downloadGodotBtn').onclick=()=>{try{const s=currentScreen();download(sceneFileName(s),buildTscn(s),'text/plain;charset=utf-8');toast(`已导出 ${sceneFileName(s)}`)}catch(err){toast('⛔ 请先修复结构错误')}};
+document.getElementById('closeMdModal').onclick=()=>document.getElementById('mdModal').classList.remove('show');
+document.getElementById('mdModal').addEventListener('click',e=>{if(e.target.id==='mdModal')e.currentTarget.classList.remove('show')});
+document.getElementById('copyMdBtn').onclick=async()=>{const t=buildMarkdown();try{await navigator.clipboard.writeText(t);toast('Markdown 已复制到剪贴板')}catch{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Markdown 已复制')}};
+document.getElementById('downloadMdBtn').onclick=exportMarkdown;
+document.getElementById('loadJsonInput').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const x=JSON.parse(await f.text());if(!x.screens||!Array.isArray(x.screens))throw new Error();pushHistory();delete x.embeddedBackgroundAssets;x.screens.forEach(s=>delete s.background);state=x;normalizeState();renderAll();toast('项目已载入（背景参考图不会从存档恢复）')}catch{alert('这不是有效的 UI Blueprint JSON 文件')}e.target.value=''});
+document.getElementById('gridBtn').onclick=()=>{state.grid=!state.grid;renderAll()};document.getElementById('snapBtn').onclick=()=>{state.snap=!state.snap;renderAll()};
+document.getElementById('gridSizeSelect').addEventListener('change',e=>{state.gridSize=Number(e.target.value)||8;renderAll()});
+document.getElementById('zoomIn').onclick=()=>{state.zoom=clamp(Math.round((state.zoom+.1)*10)/10,.2,2);renderAll()};document.getElementById('zoomOut').onclick=()=>{state.zoom=clamp(Math.round((state.zoom-.1)*10)/10,.2,2);renderAll()};
+document.getElementById('fitBtn').onclick=()=>{const sc=document.getElementById('stageScroll');state.zoom=clamp(Math.min((sc.clientWidth-90)/state.width,(sc.clientHeight-90)/state.height),.2,1.5);renderAll()};
+function changeCanvasSize(){pushHistory();const w=clamp(Number(document.getElementById('canvasW').value)||state.width,64,7680),h=clamp(Number(document.getElementById('canvasH').value)||state.height,64,7680);state.width=w;state.height=h;state.screens.forEach(s=>s.nodes.forEach(n=>{n.w=Math.min(n.w,w);n.h=Math.min(n.h,h);n.x=clamp(n.x,0,w-n.w);n.y=clamp(n.y,0,h-n.h)}));document.getElementById('presetSelect').value='custom';renderAll()}
+document.getElementById('canvasW').addEventListener('change',changeCanvasSize);document.getElementById('canvasH').addEventListener('change',changeCanvasSize);
+document.getElementById('presetSelect').addEventListener('change',e=>{if(e.target.value==='custom')return;pushHistory();const [w,h]=e.target.value.split('x').map(Number);state.width=w;state.height=h;renderAll()});
+document.getElementById('gridSizeSelect').value=String(state.gridSize);
+
+document.getElementById('undoBtn').onclick=undo;document.getElementById('redoBtn').onclick=redo;
+
+document.getElementById('inspectorTabBtn').onclick=()=>{state.activeSidebarTab='inspector';renderAll(false)};
+document.getElementById('sceneTreeTabBtn').onclick=()=>{state.activeSidebarTab='sceneTree';renderAll(false)};
+
+document.getElementById('helpBtn').onclick=()=>document.getElementById('helpModal').classList.add('show');document.getElementById('closeHelp').onclick=()=>document.getElementById('helpModal').classList.remove('show');document.getElementById('helpModal').addEventListener('click',e=>{if(e.target.id==='helpModal')e.currentTarget.classList.remove('show')});
+let tabContextTarget=null;
+function showTabContextMenu(x,y,id){
+  tabContextTarget=id;const m=document.getElementById('tabContextMenu');m.style.left=Math.min(x,window.innerWidth-180)+'px';m.style.top=Math.min(y,window.innerHeight-130)+'px';m.classList.add('show');
+}
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('#tabContextMenu'))document.getElementById('tabContextMenu').classList.remove('show')});
+document.getElementById('ctxRename').onclick=()=>{if(tabContextTarget)renameScreen(tabContextTarget);document.getElementById('tabContextMenu').classList.remove('show')};
+document.getElementById('ctxDuplicate').onclick=()=>{if(tabContextTarget)duplicateScreen(tabContextTarget);document.getElementById('tabContextMenu').classList.remove('show')};
+document.getElementById('ctxClose').onclick=()=>{if(tabContextTarget)closeScreen(tabContextTarget);document.getElementById('tabContextMenu').classList.remove('show')};
+
+window.addEventListener('keydown',e=>{
+  const key=e.key.toLowerCase();
+  // App 级撤销/重做：即使焦点正在 Inspector 输入框里也优先处理。
+  if((e.metaKey||e.ctrlKey)&&key==='z'){e.preventDefault();e.stopPropagation();if(e.shiftKey)redo();else undo();return}
+  if(e.ctrlKey&&!e.metaKey&&key==='y'){e.preventDefault();e.stopPropagation();redo();return}
+  const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;
+  const n=nodeById(state.selectedNodeId);
+  if(e.key==='Escape'||e.key.toLowerCase()==='v'){state.selectedTool='select';interaction=null;document.getElementById('mdModal').classList.remove('show');document.getElementById('godotModal').classList.remove('show');renderAll(false);e.preventDefault()}
+  if(e.key.toLowerCase()==='d'){state.selectedTool=state.lastDrawType||'Button';renderAll(false);e.preventDefault()}
+  if((e.key==='Delete'||e.key==='Backspace')&&n){deleteNode(n.id);e.preventDefault()}
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='d'&&n){duplicateNode(n);e.preventDefault()}
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){exportMarkdown();e.preventDefault()}
+  if(n&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){pushHistory();const step=e.shiftKey?state.gridSize:1;let x=n.x,y=n.y;if(e.key==='ArrowLeft')x-=step;if(e.key==='ArrowRight')x+=step;if(e.key==='ArrowUp')y-=step;if(e.key==='ArrowDown')y+=step;moveNodeTo(n,clamp(x,0,state.width-n.w),clamp(y,0,state.height-n.h));renderAll();e.preventDefault()}
+});
+
+
+let isSpacePressed=false,panDrag=null;
+window.addEventListener('keydown',e=>{
+  if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName))return;
+  if(e.code==='Space'){isSpacePressed=true;document.getElementById('stageScroll').classList.add('space-pan');e.preventDefault()}
+});
+window.addEventListener('keyup',e=>{if(e.code==='Space'){isSpacePressed=false;document.getElementById('stageScroll').classList.remove('space-pan','panning');panDrag=null}});
+const stageScroll=document.getElementById('stageScroll');
+const bgDropOverlay=document.getElementById('bgDropOverlay');
+let bgDragDepth=0;
+function dragHasImage(e){return [...(e.dataTransfer?.items||[])].some(i=>i.kind==='file'&&String(i.type||'').startsWith('image/')) || [...(e.dataTransfer?.files||[])].some(f=>String(f.type||'').startsWith('image/'))}
+stageScroll.addEventListener('dragenter',e=>{if(!dragHasImage(e))return;e.preventDefault();bgDragDepth++;bgDropOverlay.classList.add('show')});
+stageScroll.addEventListener('dragover',e=>{if(!dragHasImage(e))return;e.preventDefault();e.dataTransfer.dropEffect='copy';bgDropOverlay.classList.add('show')});
+stageScroll.addEventListener('dragleave',e=>{bgDragDepth=Math.max(0,bgDragDepth-1);if(!bgDragDepth)bgDropOverlay.classList.remove('show')});
+stageScroll.addEventListener('drop',async e=>{if(!dragHasImage(e))return;e.preventDefault();bgDragDepth=0;bgDropOverlay.classList.remove('show');const f=[...(e.dataTransfer.files||[])].find(x=>String(x.type||'').startsWith('image/'));if(f)await setBackgroundFromFile(f)});
+window.addEventListener('paste',async e=>{if(['INPUT','TEXTAREA'].includes(document.activeElement?.tagName))return;const item=[...(e.clipboardData?.items||[])].find(i=>i.kind==='file'&&String(i.type||'').startsWith('image/'));if(item){e.preventDefault();const blob=item.getAsFile();if(blob){const f=new File([blob],`clipboard_${Date.now()}.png`,{type:blob.type||'image/png'});await setBackgroundFromFile(f)}}});
+stageScroll.addEventListener('pointerdown',e=>{
+  if(e.button===1||isSpacePressed){e.preventDefault();panDrag={x:e.clientX,y:e.clientY,left:stageScroll.scrollLeft,top:stageScroll.scrollTop};stageScroll.classList.add('panning');stageScroll.setPointerCapture?.(e.pointerId)}
+});
+stageScroll.addEventListener('pointermove',e=>{if(panDrag){stageScroll.scrollLeft=panDrag.left-(e.clientX-panDrag.x);stageScroll.scrollTop=panDrag.top-(e.clientY-panDrag.y)}});
+stageScroll.addEventListener('pointerup',()=>{panDrag=null;stageScroll.classList.remove('panning')});
+stageScroll.addEventListener('wheel',e=>{
+  if(e.ctrlKey||e.metaKey){e.preventDefault();const old=state.zoom;state.zoom=clamp(Math.round((state.zoom+(e.deltaY<0?.1:-.1))*10)/10,.2,2.5);if(state.zoom!==old)renderAll(false)}
+},{passive:false});
+
+
+// ===== 左侧控件库：可拖动宽度 =====
+const workspaceEl = document.querySelector('.workspace');
+const sidebarResizeHandle = document.getElementById('sidebarResizeHandle');
+const SIDEBAR_WIDTH_KEY = 'godot_ui_sidebar_width';
+let sidebarWidth = Number(localStorage.getItem(SIDEBAR_WIDTH_KEY) || 280);
+if (!Number.isFinite(sidebarWidth)) sidebarWidth = 280;
+
+function getSidebarMaxWidth(){
+  // 始终给中间画板和右侧 Inspector 留出空间
+  return Math.max(300, Math.min(620, window.innerWidth - 560));
+}
+function applySidebarWidth(width, persist=true){
+  sidebarWidth = Math.max(210, Math.min(getSidebarMaxWidth(), Math.round(width)));
+  workspaceEl.style.setProperty('--sidebar-w', sidebarWidth + 'px');
+  if (persist) localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth));
+}
+applySidebarWidth(sidebarWidth, false);
+
+let sidebarResizeState = null;
+
+function beginSidebarResize(clientX){
+  sidebarResizeState = { startX: clientX, startWidth: sidebarWidth };
+  sidebarResizeHandle.classList.add('dragging');
+  document.documentElement.style.cursor = 'col-resize';
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+}
+function moveSidebarResize(clientX){
+  if (!sidebarResizeState) return;
+  applySidebarWidth(sidebarResizeState.startWidth + (clientX - sidebarResizeState.startX), false);
+}
+function endSidebarResize(){
+  if (!sidebarResizeState) return;
+  sidebarResizeState = null;
+  sidebarResizeHandle.classList.remove('dragging');
+  document.documentElement.style.cursor = '';
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth));
+}
+
+// Mouse events: desktop browsers / macOS / Windows
+sidebarResizeHandle.addEventListener('mousedown', (e)=>{
+  if (e.button !== 0) return;
+  e.preventDefault();
+  beginSidebarResize(e.clientX);
+});
+window.addEventListener('mousemove', (e)=>moveSidebarResize(e.clientX));
+window.addEventListener('mouseup', endSidebarResize);
+
+// Pointer events: touch / pen fallback
+sidebarResizeHandle.addEventListener('pointerdown', (e)=>{
+  if (e.pointerType === 'mouse') return; // mouse is already handled above
+  e.preventDefault();
+  beginSidebarResize(e.clientX);
+  try { sidebarResizeHandle.setPointerCapture(e.pointerId); } catch {}
+});
+window.addEventListener('pointermove', (e)=>{
+  if (e.pointerType !== 'mouse') moveSidebarResize(e.clientX);
+});
+window.addEventListener('pointerup', (e)=>{
+  if (e.pointerType !== 'mouse') endSidebarResize();
+});
+
+sidebarResizeHandle.addEventListener('dblclick', ()=>{
+  applySidebarWidth(280);
+  toast('左侧控件库宽度已恢复默认');
+});
+
+window.addEventListener('resize', ()=>{
+  applySidebarWidth(sidebarWidth, false);
+});
+
+renderAll(false);updateHistoryButtons();
+setTimeout(()=>{if(currentScreen().nodes.length===0)document.getElementById('helpModal').classList.add('show')},350);
+</script>
+</body>
+</html>
